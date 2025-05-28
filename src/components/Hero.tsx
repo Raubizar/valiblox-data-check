@@ -1,6 +1,5 @@
-
 import { Button } from "@/components/ui/button";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, X } from "lucide-react";
 
 export const Hero = () => {
   return (
