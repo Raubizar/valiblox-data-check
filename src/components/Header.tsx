@@ -63,8 +63,13 @@ export const Header = () => {
             </Link>
           </nav>
 
-          {/* Sign In Button */}
+          {/* Sign In Button and Dashboard Link */}
           <div className="hidden md:flex items-center space-x-4">
+            <Link to="/dashboard">
+              <Button variant="ghost" className="text-gray-600 hover:text-gray-900">
+                Dashboard
+              </Button>
+            </Link>
             <Button variant="outline" className="border-gray-300">
               Sign In
             </Button>
@@ -110,6 +115,9 @@ export const Header = () => {
               </Link>
               <Link to="/pricing" className="block text-gray-600 hover:text-gray-900 py-2">
                 Pricing
+              </Link>
+              <Link to="/dashboard" className="block text-gray-600 hover:text-gray-900 py-2">
+                Dashboard
               </Link>
               <Button variant="outline" className="w-full mt-4">
                 Sign In
