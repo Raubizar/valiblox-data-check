@@ -1,8 +1,10 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Menu, X, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
+import { ComingSoonTools } from "@/components/ComingSoonTools";
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -43,9 +45,19 @@ export const Header = () => {
                   <Link to="/deliverables-tracker" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">
                     Deliverables Tracker
                   </Link>
-                  <Link to="/coming-soon" className="block px-4 py-2 text-gray-700 hover:bg-gray-100">
-                    Coming Soon Tools
-                  </Link>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <button className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100">
+                        Coming Soon Tools
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Coming Soon Tools</DialogTitle>
+                      </DialogHeader>
+                      <ComingSoonTools />
+                    </DialogContent>
+                  </Dialog>
                 </div>
               )}
             </div>
@@ -99,9 +111,19 @@ export const Header = () => {
                   <Link to="/deliverables-tracker" className="block text-gray-500 hover:text-gray-700">
                     Deliverables Tracker
                   </Link>
-                  <Link to="/coming-soon" className="block text-gray-500 hover:text-gray-700">
-                    Coming Soon Tools
-                  </Link>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <button className="block text-gray-500 hover:text-gray-700">
+                        Coming Soon Tools
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Coming Soon Tools</DialogTitle>
+                      </DialogHeader>
+                      <ComingSoonTools />
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </div>
               <Link to="/tutorials" className="block text-gray-600 hover:text-gray-900 py-2">

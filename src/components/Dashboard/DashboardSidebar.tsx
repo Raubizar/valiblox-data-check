@@ -1,5 +1,5 @@
 
-import { Home, FolderOpen, FileText, BarChart3, Settings, HelpCircle, LogOut } from "lucide-react";
+import { Home, FolderOpen, FileText, BarChart3, Settings, Users, Gift, HelpCircle, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface DashboardSidebarProps {
@@ -10,9 +10,8 @@ interface DashboardSidebarProps {
 export const DashboardSidebar = ({ activeSection, onSectionChange }: DashboardSidebarProps) => {
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: Home },
-    { id: "projects", label: "Projects", icon: FolderOpen },
-    { id: "standards", label: "Naming Standards", icon: FileText },
-    { id: "reports", label: "Reports", icon: BarChart3 },
+    { id: "referrals", label: "Refer & Earn", icon: Gift },
+    { id: "team", label: "Team", icon: Users },
     { id: "settings", label: "Account Settings", icon: Settings },
   ];
 

@@ -2,34 +2,73 @@
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { DashboardSidebar } from "@/components/Dashboard/DashboardSidebar";
-import { ProjectsOverview } from "@/components/Dashboard/ProjectsOverview";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProjectsTab } from "@/components/Dashboard/ProjectsTab";
 import { SavedNamingStandards } from "@/components/Dashboard/SavedNamingStandards";
-import { ReportsSection } from "@/components/Dashboard/ReportsSection";
-import { HistoryInsights } from "@/components/Dashboard/HistoryInsights";
+import { ReportsTab } from "@/components/Dashboard/ReportsTab";
+import { InsightsTab } from "@/components/Dashboard/InsightsTab";
+import { OnboardingModal } from "@/components/Dashboard/OnboardingModal";
+import { ReferralSection } from "@/components/Dashboard/ReferralSection";
+import { TeamManagement } from "@/components/Dashboard/TeamManagement";
 import { AccountSettings } from "@/components/Dashboard/AccountSettings";
+import { FloatingHelpButton } from "@/components/FloatingHelpButton";
+import { Button } from "@/components/ui/button";
+import { HelpCircle } from "lucide-react";
 
 export default function Dashboard() {
   const [activeSection, setActiveSection] = useState("dashboard");
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const renderActiveSection = () => {
     switch (activeSection) {
       case "dashboard":
         return (
           <div className="space-y-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
-              <p className="text-gray-600">Welcome back! Here's an overview of your validation activities.</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
+                <p className="text-gray-600">Welcome back! Here's an overview of your validation activities.</p>
+              </div>
+              <Button 
+                variant="outline"
+                onClick={() => setShowOnboarding(true)}
+                className="flex items-center space-x-2"
+              >
+                <HelpCircle className="w-4 h-4" />
+                <span>Take Tour</span>
+              </Button>
             </div>
-            <ProjectsOverview />
-            <HistoryInsights />
+            
+            <Tabs defaultValue="projects" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="projects">Projects</TabsTrigger>
+                <TabsTrigger value="standards">Naming Standards</TabsTrigger>
+                <TabsTrigger value="reports">Reports</TabsTrigger>
+                <TabsTrigger value="insights">Insights</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="projects" className="mt-6">
+                <ProjectsTab />
+              </TabsContent>
+              
+              <TabsContent value="standards" className="mt-6">
+                <SavedNamingStandards />
+              </TabsContent>
+              
+              <TabsContent value="reports" className="mt-6">
+                <ReportsTab />
+              </TabsContent>
+              
+              <TabsContent value="insights" className="mt-6">
+                <InsightsTab />
+              </TabsContent>
+            </Tabs>
           </div>
         );
-      case "projects":
-        return <ProjectsOverview />;
-      case "standards":
-        return <SavedNamingStandards />;
-      case "reports":
-        return <ReportsSection />;
+      case "referrals":
+        return <ReferralSection />;
+      case "team":
+        return <TeamManagement />;
       case "settings":
         return <AccountSettings />;
       default:
@@ -39,8 +78,6 @@ export default function Dashboard() {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
               <p className="text-gray-600">Welcome back! Here's an overview of your validation activities.</p>
             </div>
-            <ProjectsOverview />
-            <HistoryInsights />
           </div>
         );
     }
@@ -57,6 +94,12 @@ export default function Dashboard() {
           </div>
         </main>
       </div>
+      
+      <FloatingHelpButton />
+      <OnboardingModal 
+        open={showOnboarding} 
+        onOpenChange={setShowOnboarding} 
+      />
     </div>
   );
 }
