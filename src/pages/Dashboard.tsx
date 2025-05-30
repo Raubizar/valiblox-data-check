@@ -12,6 +12,8 @@ import { ReferralSection } from "@/components/Dashboard/ReferralSection";
 import { TeamManagement } from "@/components/Dashboard/TeamManagement";
 import { AccountSettings } from "@/components/Dashboard/AccountSettings";
 import { FloatingHelpButton } from "@/components/FloatingHelpButton";
+import { DisciplineValidation } from "@/components/Dashboard/DisciplineValidation";
+import { AutomatedReporting } from "@/components/Dashboard/AutomatedReporting";
 import { Button } from "@/components/ui/button";
 import { HelpCircle } from "lucide-react";
 
@@ -40,15 +42,21 @@ export default function Dashboard() {
             </div>
             
             <Tabs defaultValue="projects" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="projects">Projects</TabsTrigger>
-                <TabsTrigger value="standards">Naming Standards</TabsTrigger>
+                <TabsTrigger value="validation">Validation</TabsTrigger>
+                <TabsTrigger value="standards">Standards</TabsTrigger>
                 <TabsTrigger value="reports">Reports</TabsTrigger>
+                <TabsTrigger value="automation">Automation</TabsTrigger>
                 <TabsTrigger value="insights">Insights</TabsTrigger>
               </TabsList>
               
               <TabsContent value="projects" className="mt-6">
                 <ProjectsTab />
+              </TabsContent>
+              
+              <TabsContent value="validation" className="mt-6">
+                <DisciplineValidation />
               </TabsContent>
               
               <TabsContent value="standards" className="mt-6">
@@ -57,6 +65,10 @@ export default function Dashboard() {
               
               <TabsContent value="reports" className="mt-6">
                 <ReportsTab />
+              </TabsContent>
+              
+              <TabsContent value="automation" className="mt-6">
+                <AutomatedReporting />
               </TabsContent>
               
               <TabsContent value="insights" className="mt-6">
