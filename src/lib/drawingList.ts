@@ -31,7 +31,6 @@ export function compare(drawingList: string[], files: string[]): ComparisonResul
   files = files.filter(file => typeof file === 'string' && file.trim() !== '');
   
   const matched: MatchResult[] = [];
-  let matchedCount = 0;
   const unmatchedInList: string[] = [];
   let unmatchedInFiles = [...files]; // Assume all files are unmatched initially
   
@@ -46,39 +45,24 @@ export function compare(drawingList: string[], files: string[]): ComparisonResul
         matchedFile,
         status: 'Done'
       });
-      matchedCount++;
       
       // Remove the matched file from the unmatchedInFiles array
       unmatchedInFiles = unmatchedInFiles.filter(file => file !== matchedFile);
     } else {
-      matched.push({
-        listItem,
-        matchedFile: null,
-        status: 'To Do'
-      });
       unmatchedInList.push(listItem);
     }
   });
   
-  // Add files that aren't in the drawing list
-  unmatchedInFiles.forEach(file => {
-    matched.push({
-      listItem: '',
-      matchedFile: file,
-      status: 'Not in List'
-    });
-  });
-  
   // Calculate percentage found
   const percentageFound = drawingList.length > 0 
-    ? (matchedCount / drawingList.length) * 100 
+    ? (matched.length / drawingList.length) * 100 
     : 0;
   
   return {
     matched,
     unmatchedInList,
     unmatchedInFiles,
-    matchedCount,
+    matchedCount: matched.length,
     totalListItems: drawingList.length,
     totalFiles: files.length,
     percentageFound

@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import NamingValidator from "./pages/NamingValidator";
 import DeliverablesTracker from "./pages/DeliverablesTracker";
+import DeliverablesTrackerTest from "./pages/DeliverablesTrackerTest";
 import ComingSoonPage from "./pages/ComingSoonPage";
 import Tutorials from "./pages/Tutorials";
 import AboutUs from "./pages/AboutUs";

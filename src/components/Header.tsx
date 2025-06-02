@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -16,14 +15,12 @@ export const Header = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
-            <div className="flex items-center space-x-1">
-              <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center relative">
-                <div className="w-3 h-3 bg-white rounded-sm transform rotate-45"></div>
-              </div>
-              <div className="w-6 h-6 bg-red-500 rounded-lg flex items-center justify-center relative -ml-2">
-                <div className="w-2 h-2 bg-white rounded-sm"></div>
-              </div>
-            </div>
+            <img
+              src="/Valiblox_v3.1-icon-removebg-preview.png"
+              alt="Valiblox icon"
+              className="h-8 w-8 object-contain"
+              style={{ display: 'block' }}
+            />
             <span className="text-xl font-bold text-gray-900">VALIBLOX</span>
           </Link>
 
