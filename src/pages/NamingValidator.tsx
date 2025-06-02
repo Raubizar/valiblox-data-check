@@ -22,8 +22,7 @@ interface ComplianceData {
   compliancePercentage: number;
 }
 
-const NamingValidator = () => {
-  const [templateUploaded, setTemplateUploaded] = useState(false);
+const NamingValidator = () => {  const [templateUploaded, setTemplateUploaded] = useState(false);
   const [filesSelected, setFilesSelected] = useState(false);
   const [validationComplete, setValidationComplete] = useState(false);
   const [namingRules, setNamingRules] = useState<NamingRules | null>(null);
@@ -33,7 +32,7 @@ const NamingValidator = () => {
     compliantFiles: 0,
     compliancePercentage: 0
   });
-  const handleTemplateUpload = (namingConvention: any[][]) => {
+  const [isProcessing, setIsProcessing] = useState(false);  const handleTemplateUpload = (namingConvention: any[][]) => {
     try {
       const rules = parseNamingRules(namingConvention);
       setNamingRules(rules);
@@ -51,50 +50,69 @@ const NamingValidator = () => {
       return;
     }
 
+    setIsProcessing(true);
     setFilesSelected(true);
     
-    const results: ValidationResultItem[] = [];
-    let compliantCount = 0;
+    try {
+      const results: ValidationResultItem[] = [];
+      let compliantCount = 0;
+      
+      // Process files in batches to prevent UI freezing for large file sets
+      const batchSize = 50;
+      const totalFiles = files.length;
+      
+      for (let i = 0; i < totalFiles; i += batchSize) {
+        const batch = Array.from(files).slice(i, i + batchSize);
+        
+        // Process this batch
+        for (const file of batch) {
+          const result = validateName(file.name, namingRules);
+          
+          // Get folder path from file if available
+          // @ts-ignore - folderPath is a custom property we added
+          const folderPath = file.folderPath || "Uploaded Files";
+          
+          results.push({
+            folderPath,
+            fileName: file.name,
+            status: result.compliance,
+            details: result.details
+          });
+          
+          if (result.compliance === "Ok") {
+            compliantCount++;
+          }
+        }
+        
+        // Allow UI to update between batches
+        if (i + batchSize < totalFiles) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }      }
     
-    // Process each file and validate its name
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const result = validateName(file.name, namingRules);
+      // Group results by folder for better display
+      const groupedResults = groupByFolder(results);
+      const flatResults = groupedResults.flat();
       
-      // Get folder path from file if available
-      // @ts-ignore - folderPath is a custom property we added
-      const folderPath = file.folderPath || "Uploaded Files";
+      // Update state with validation results
+      setValidationResults(flatResults);
       
-      results.push({
-        folderPath,
-        fileName: file.name,
-        status: result.compliance,
-        details: result.details
+      // Calculate and update compliance data
+      const fileCount = files.length;
+      const compliancePercentage = fileCount > 0 ? Math.round((compliantCount / fileCount) * 100) : 0;
+      
+      setComplianceData({
+        totalFiles: fileCount,
+        compliantFiles: compliantCount,
+        compliancePercentage
       });
       
-      if (result.compliance === "Ok") {
-        compliantCount++;
-      }
+      setValidationComplete(true);
+    } catch (error) {
+      console.error("Error processing files:", error);
+      alert("There was an error processing the files. Please try again.");
+    } finally {
+      setIsProcessing(false);
     }
-    
-    // Group results by folder for better display
-    const groupedResults = groupByFolder(results);
-    const flatResults = groupedResults.flat();
-    
-    // Update state with validation results
-    setValidationResults(flatResults);
-    
-    // Calculate and update compliance data
-    const totalFiles = files.length;
-    const compliancePercentage = totalFiles > 0 ? Math.round((compliantCount / totalFiles) * 100) : 0;
-    
-    setComplianceData({
-      totalFiles,
-      compliantFiles: compliantCount,
-      compliancePercentage
-    });
-    
-    setValidationComplete(true);
   };
   
   // Helper function to group results by folder
@@ -122,13 +140,13 @@ const NamingValidator = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
       <Header />
       <main className="py-12 lg:py-20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <HeroSection validationComplete={validationComplete} />
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">          <HeroSection validationComplete={validationComplete} />
 
           <ProcessSteps 
             onTemplateUpload={handleTemplateUpload}
             onFilesSelect={handleFilesSelect}
             templateUploaded={templateUploaded}
+            isProcessing={isProcessing}
           />
 
           {validationComplete && (
