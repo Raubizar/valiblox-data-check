@@ -11,9 +11,17 @@ export const HowItWorks = () => {
             <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-green-600 font-bold">1</span>
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-900 text-lg">Upload Your Template</h3>
-              <p className="text-gray-600 leading-relaxed">Configure your project's naming convention template with custom rules and requirements.</p>
+            <div>              <h3 className="font-semibold text-gray-900 text-lg">Upload Your Template</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Configure your project's naming convention template with custom rules and requirements.
+                <a 
+                  href="./Naming-Convention-Template.xlsx" 
+                  download="Naming-Convention-Template.xlsx"
+                  className="block mt-2 text-green-600 hover:text-green-700 underline"
+                >
+                  Download template file
+                </a>
+              </p>
             </div>
           </div>
           <div className="flex items-start space-x-4">

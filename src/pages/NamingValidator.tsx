@@ -1,3 +1,4 @@
+
 import { useState, useRef } from "react";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -7,14 +8,18 @@ import { ValidationResults } from "@/components/NamingValidator/ValidationResult
 import { HowItWorks } from "@/components/NamingValidator/HowItWorks";
 import { FeaturesSection } from "@/components/NamingValidator/FeaturesSection";
 import { validateName, parseNamingRules, NamingRules } from "@/lib/naming";
-import * as XLSX from 'xlsx';
 
-// File validation result type
-interface FileValidationResult {
+interface ValidationResultItem {
   folderPath: string;
   fileName: string;
-  status: 'Ok' | 'Wrong';
+  status: string;
   details: string;
+}
+
+interface ComplianceData {
+  totalFiles: number;
+  compliantFiles: number;
+  compliancePercentage: number;
 }
 
 const NamingValidator = () => {
@@ -22,160 +27,97 @@ const NamingValidator = () => {
   const [filesSelected, setFilesSelected] = useState(false);
   const [validationComplete, setValidationComplete] = useState(false);
   const [namingRules, setNamingRules] = useState<NamingRules | null>(null);
-  const [validationResults, setValidationResults] = useState<FileValidationResult[]>([]);
-  const [complianceData, setComplianceData] = useState({
+  const [validationResults, setValidationResults] = useState<ValidationResultItem[]>([]);
+  const [complianceData, setComplianceData] = useState<ComplianceData>({
     totalFiles: 0,
     compliantFiles: 0,
     compliancePercentage: 0
   });
-  
-  // References for file inputs
-  const templateInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  // Handler for template file upload
-  const handleTemplateUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    
+  const handleTemplateUpload = (namingConvention: any[][]) => {
     try {
-      // Read the Excel file
-      const arrayBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
-      
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-      
-      // Parse the naming rules
-      const rules = parseNamingRules(data as any[][]);
+      const rules = parseNamingRules(namingConvention);
       setNamingRules(rules);
       setTemplateUploaded(true);
-      
       console.log("Naming rules loaded:", rules);
     } catch (error) {
-      console.error("Error reading template file:", error);
-      alert("There was an error reading the naming convention template. Please make sure it's in the correct format.");
+      console.error("Error parsing naming convention:", error);
+      alert("There was an error parsing the naming convention. Please check the file format.");
     }
   };
-  
-  // Handler for folder selection
-  const handleFolderSelect = async () => {
+
+  const handleFilesSelect = async (files: FileList | File[]) => {
     if (!namingRules) {
       alert("Please upload a naming convention template first.");
       return;
     }
+
+    setFilesSelected(true);
     
-    try {
-      // Try to use the File System Access API if available
-      if ('showDirectoryPicker' in window) {
-        const dirHandle = await (window as any).showDirectoryPicker();
-        const files: { name: string; path: string }[] = [];
-        
-        // Function to recursively read directory
-        const readDirectory = async (
-          dirHandle: any, 
-          path = ""
-        ) => {
-          try {
-            for await (const entry of dirHandle.values()) {
-              const entryPath = path ? `${path}/${dirHandle.name}` : dirHandle.name;
-              
-              if (entry.kind === 'file') {
-                files.push({
-                  name: entry.name,
-                  path: entryPath
-                });
-              } else if (entry.kind === 'directory') {
-                await readDirectory(entry, entryPath);
-              }
-            }
-          } catch (err) {
-            console.error("Error reading directory:", err);
-          }
-        };
-        
-        await readDirectory(dirHandle);
-        
-        if (files.length === 0) {
-          alert("No files found in the selected folder.");
-          return;
-        }
-        
-        // Validate each file
-        processFiles(files);
-      } else {
-        // Fallback for browsers without directory picker
-        alert("Your browser doesn't support folder selection. Please try using Chrome, Edge, or another modern browser.");
-      }
-    } catch (error) {
-      console.error("Error selecting folder:", error);
-      alert("There was an error accessing the selected folder.");
-    }
-  };
-  
-  // Handler for individual file selection
-  const handleFilesSelect = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-  
-  // Process the selected files
-  const handleFilesUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!namingRules) {
-      alert("Please upload a naming convention template first.");
-      return;
-    }
-    
-    const fileList = event.target.files;
-    if (!fileList || fileList.length === 0) return;
-    
-    const files = Array.from(fileList).map(file => ({
-      name: file.name,
-      path: "Uploaded Files" // Default path for directly uploaded files
-    }));
-    
-    processFiles(files);
-  };
-  
-  // Process and validate files
-  const processFiles = (files: { name: string; path: string }[]) => {
-    if (!namingRules) return;
-    
-    // Validate the files
+    const results: ValidationResultItem[] = [];
     let compliantCount = 0;
     
-    const results = files.map(file => {
+    // Process each file and validate its name
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       const result = validateName(file.name, namingRules);
       
-      if (result.compliance === 'Ok') {
-        compliantCount++;
-      }
+      // Get folder path from file if available
+      // @ts-ignore - folderPath is a custom property we added
+      const folderPath = file.folderPath || "Uploaded Files";
       
-      return {
-        folderPath: file.path,
+      results.push({
+        folderPath,
         fileName: file.name,
         status: result.compliance,
         details: result.details
-      };
-    });
+      });
+      
+      if (result.compliance === "Ok") {
+        compliantCount++;
+      }
+    }
     
-    const compliancePercentage = files.length > 0 
-      ? Math.round((compliantCount / files.length) * 100) 
-      : 0;
+    // Group results by folder for better display
+    const groupedResults = groupByFolder(results);
+    const flatResults = groupedResults.flat();
     
-    setValidationResults(results);
+    // Update state with validation results
+    setValidationResults(flatResults);
+    
+    // Calculate and update compliance data
+    const totalFiles = files.length;
+    const compliancePercentage = totalFiles > 0 ? Math.round((compliantCount / totalFiles) * 100) : 0;
+    
     setComplianceData({
-      totalFiles: files.length,
+      totalFiles,
       compliantFiles: compliantCount,
       compliancePercentage
     });
     
-    setFilesSelected(true);
     setValidationComplete(true);
   };
-
+  
+  // Helper function to group results by folder
+  const groupByFolder = (results: ValidationResultItem[]): ValidationResultItem[] => {
+    const folderMap = new Map<string, ValidationResultItem[]>();
+    
+    // Group files by folder
+    results.forEach(result => {
+      if (!folderMap.has(result.folderPath)) {
+        folderMap.set(result.folderPath, []);
+      }
+      folderMap.get(result.folderPath)!.push(result);
+    });
+    
+    // Create a flat array with folder headers
+    const flatResults: ValidationResultItem[] = [];
+    
+    folderMap.forEach((folderResults, folderPath) => {
+      flatResults.push(...folderResults);
+    });
+    
+    return flatResults;
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
       <Header />
@@ -183,26 +125,9 @@ const NamingValidator = () => {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <HeroSection validationComplete={validationComplete} />
 
-          {/* Hidden file inputs for direct control */}
-          <input 
-            type="file" 
-            ref={templateInputRef}
-            style={{ display: 'none' }}
-            accept=".xlsx,.xls"
-            onChange={handleTemplateUpload}
-          />
-          
-          <input 
-            type="file" 
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            multiple
-            onChange={handleFilesUpload}
-          />
-
           <ProcessSteps 
-            onTemplateUpload={() => templateInputRef.current?.click()}
-            onFilesSelect={handleFolderSelect}
+            onTemplateUpload={handleTemplateUpload}
+            onFilesSelect={handleFilesSelect}
             templateUploaded={templateUploaded}
           />
 

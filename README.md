@@ -1,26 +1,45 @@
-# Welcome to your Lovable project
+# Valiblox Data Check
 
-## Project info
+## Overview
 
-**URL**: https://lovable.dev/projects/2a8908ab-c027-4935-9665-5a35284336ec
+Valiblox is a SaaS platform that automates validation of engineering documents, drawings, and deliverables. It helps engineering teams save time by automating manual validation processes.
 
-## How can I edit this code?
+### Key Features
 
-There are several ways of editing your application.
+- **Naming Standard Validator**: Verify file naming conventions for engineering documents
+- **Deliverables Tracker**: Track project deliverables against requirements
+- **Quality Checker**: Validate document quality standards
 
-**Use Lovable**
+## File Naming Validator
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/2a8908ab-c027-4935-9665-5a35284336ec) and start prompting.
+The File Naming Validator helps ensure that all your project files follow the standardized naming convention.
 
-Changes made via Lovable will be committed automatically to this repo.
+### How to Use the Naming Validator
 
-**Use your preferred IDE**
+1. **Download Template**: Get the standard naming convention template Excel file
+2. **Customize Template**: Fill in your project-specific naming rules
+3. **Upload Template**: Upload your completed naming convention file
+4. **Select Files**: Choose files or folders to validate
+5. **Review Results**: See validation results and export reports
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Template Format
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+The naming convention template requires the following structure:
 
-Follow these steps:
+- **Row 1**: Contains basic configuration
+  - Cell B1: Number of parts in filename
+  - Cell D1: Delimiter character (e.g., "_" or "-")
+- **Row 2+**: Contains allowed values for each filename part
+  - Each column represents a part of the filename
+  - Each row in a column represents an allowed value for that part
+
+### Validation Logic
+
+- Files are validated against the defined naming convention
+- Parts are checked for compliance with allowed values
+- Results show compliant and non-compliant files with details
+
+## Project Setup
 
 ```sh
 # Step 1: Clone the repository using the project's Git URL.
@@ -59,6 +78,45 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+
+## Core Validation Modules
+
+### src/lib/naming.ts
+
+The `naming.ts` module provides file naming validation:
+
+```typescript
+import { validateName, NamingRules } from "@/lib/naming";
+
+// Define naming rules
+const rules: NamingRules = {
+  partsCount: 3,
+  delimiter: "-",
+  partRules: [
+    ["PRJ", "TEST"],           // First part options
+    ["001", "002", "003"],     // Second part options
+    ["Description"]            // Third part is any description
+  ]
+};
+
+// Validate a filename
+const result = validateName("PRJ-001-MainDrawing.pdf", rules);
+console.log(result.compliance); // 'Ok' or 'Wrong'
+```
+
+### src/lib/drawingList.ts
+
+The `drawingList.ts` module compares drawing lists against actual files:
+
+```typescript
+import { compare } from "@/lib/drawingList";
+
+const drawingList = ["Drawing 001", "Drawing 002", "Drawing 003"];
+const files = ["Drawing 001.pdf", "Drawing 002.pdf", "Extra File.pdf"];
+
+const result = compare(drawingList, files);
+console.log(`Found ${result.matchedCount} of ${result.totalListItems} items`);
+```
 
 ## How can I deploy this project?
 

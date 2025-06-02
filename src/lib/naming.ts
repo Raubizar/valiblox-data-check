@@ -2,6 +2,7 @@
  * File Naming Validation Module
  * Ported from check-file-naming repository
  */
+import * as XLSX from 'xlsx';
 
 export interface NamingRules {
   partsCount: number;
@@ -148,6 +149,41 @@ export function parseNamingRules(namingConvention: any[][]): NamingRules {
     
     partRules.push(allowedValues);
   }
-  
-  return { partsCount, delimiter, partRules };
+    return { partsCount, delimiter, partRules };
+}
+
+/**
+ * Creates a blank naming convention template in Excel format
+ * @returns Binary data for an Excel file that can be saved
+ */
+export function createTemplateFile(): Blob {
+  try {
+    // Create a basic workbook
+    const wb = XLSX.utils.book_new();
+    
+    // Create a template worksheet
+    const wsData = [
+      ["Number of parts", 3, "", "Delimiter", "_"],
+      ["Part 1", "Part 2", "Part 3"],
+      ["PRJ", "001", "Description"],
+      ["TST", "002", ""],
+      ["DEV", "003", ""],
+      ["", "004", ""],
+      ["", "005", ""]
+    ];
+    
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    
+    // Add the worksheet to the workbook
+    XLSX.utils.book_append_sheet(wb, ws, "Naming Convention");
+    
+    // Convert to binary Excel format
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    
+    // Create a Blob from the data
+    return new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  } catch (error) {
+    console.error("Error creating template file:", error);
+    throw new Error("Failed to create template file");
+  }
 }
