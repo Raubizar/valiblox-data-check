@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,6 +10,17 @@ interface ProcessStepsProps {
 }
 
 export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded }: ProcessStepsProps) => {
+  // Handle download of the template
+  const handleDownloadTemplate = () => {
+    // Create a link to download the template
+    const link = document.createElement('a');
+    link.href = '/Naming-Convention-Template.xlsx'; 
+    link.download = 'Naming-Convention-Template.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+  
   return (
     <div className="mb-16">
       <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">Simple 3-Step Process</h2>
@@ -25,7 +35,11 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
             <div className="flex-1">
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Download Template</h3>
               <p className="text-gray-600 mb-6 leading-relaxed">Get the standard template for your project's naming convention.</p>
-              <Button variant="outline" className="w-full border-green-600 text-green-600 hover:bg-green-50">
+              <Button 
+                variant="outline" 
+                className="w-full border-green-600 text-green-600 hover:bg-green-50"
+                onClick={handleDownloadTemplate}
+              >
                 <Download className="w-5 h-5 mr-2" />
                 Naming Convention Template.xlsx
               </Button>
@@ -47,7 +61,7 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
                 className={`w-full ${templateUploaded ? 'bg-green-600 hover:bg-green-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
               >
                 <Upload className="w-5 h-5 mr-2" />
-                {templateUploaded ? 'AMS1-File n...tion App.xlsx ✓' : 'Choose File'}
+                {templateUploaded ? 'Template Uploaded ✓' : 'Choose File'}
               </Button>
             </div>
           </div>
@@ -68,11 +82,12 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
                 onClick={onFilesSelect}
                 size="lg" 
                 className="bg-green-600 hover:bg-green-700 text-white h-auto py-4 px-6"
+                disabled={!templateUploaded}
               >
                 <Folder className="w-5 h-5 mr-2" />
                 <div className="text-left">
                   <div>Select Folder</div>
-                  <div className="text-sm opacity-90">Suite 1 and Office</div>
+                  <div className="text-sm opacity-90">Validate files in a folder</div>
                 </div>
               </Button>
               <div className="flex items-center justify-center">
@@ -82,11 +97,12 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
                 size="lg" 
                 variant="outline"
                 className="border-green-600 text-green-600 hover:bg-green-50 h-auto py-4 px-6"
+                disabled={true} // Temporarily disabled
               >
                 <File className="w-5 h-5 mr-2" />
                 <div className="text-left">
                   <div>Excel File</div>
-                  <div className="text-sm opacity-75">with file names</div>
+                  <div className="text-sm opacity-75">Coming soon</div>
                 </div>
               </Button>
             </div>
