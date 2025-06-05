@@ -15,6 +15,7 @@ import AboutUs from "./pages/AboutUs";
 import Articles from "./pages/Articles";
 import Pricing from "./pages/Pricing";
 import Dashboard from "./pages/Dashboard";
+import { isFeatureEnabled } from "@/config/featureFlags";
 
 const queryClient = new QueryClient();
 
@@ -27,13 +28,16 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/naming-validator" element={<NamingValidator />} />
+          <Route path="/naming-demo" element={<NamingValidator />} />
           <Route path="/deliverables-tracker" element={<DeliverablesTracker />} />
+          <Route path="/drawinglist-demo" element={<DeliverablesTracker />} />
           <Route path="/coming-soon" element={<ComingSoonPage />} />
-          <Route path="/tutorials" element={<Tutorials />} />
-          <Route path="/about" element={<AboutUs />} />
-          <Route path="/articles" element={<Articles />} />
-          <Route path="/pricing" element={<Pricing />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          {/* Feature-flagged routes */}
+          {isFeatureEnabled('tutorialsPage') && <Route path="/tutorials" element={<Tutorials />} />}
+          {isFeatureEnabled('aboutPage') && <Route path="/about" element={<AboutUs />} />}
+          {isFeatureEnabled('articlesPage') && <Route path="/articles" element={<Articles />} />}
+          {isFeatureEnabled('pricingPage') && <Route path="/pricing" element={<Pricing />} />}
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

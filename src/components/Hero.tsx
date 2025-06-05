@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { CheckCircle, X } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export const Hero = () => {
   return (
@@ -8,20 +9,24 @@ export const Hero = () => {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="text-center lg:text-left">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-              ✅ Fast, Reliable Data Checks for{" "}
-              <span className="text-green-600">Digital Engineering</span>
+              Turn days of document QA into a{" "}
+              <span className="text-green-600">5-second, one-click task</span>
+              —complete with branded, shareable proof.
             </h1>
             <p className="mt-6 text-xl text-gray-600 leading-relaxed">
-              Valiblox automates the validation of drawings, models, and documents — 
-              helping engineering teams and document controllers save hours with just a few clicks.
+              Validate naming and deliverables in seconds. Run 1,000 checks for just €9—no subscription.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Button size="lg" className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg">
-                Get Started
-              </Button>
-              <Button variant="outline" size="lg" className="px-8 py-3 text-lg">
-                Watch Demo
-              </Button>
+              <Link to="/naming-demo">
+                <Button size="lg" className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 text-lg w-full sm:w-auto">
+                  Try Naming Demo
+                </Button>
+              </Link>
+              <Link to="/drawinglist-demo">
+                <Button variant="outline" size="lg" className="px-8 py-3 text-lg w-full sm:w-auto">
+                  Try Deliverables Demo
+                </Button>
+              </Link>
             </div>
           </div>
           

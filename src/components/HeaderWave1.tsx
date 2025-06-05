@@ -1,3 +1,4 @@
+// filepath: c:\Users\ruben\Documents\GitHub\valiblox-data-check\src\components\Header.tsx
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
@@ -19,16 +20,18 @@ export const Header = () => {
               style={{ display: 'block' }}
             />
             <span className="text-xl font-bold text-gray-900">VALIBLOX</span>
-          </Link>          {/* Desktop Navigation - Wave-1: Home, Naming Checker, Deliverables Tracker, Dashboard */}
+          </Link>
+
+          {/* Desktop Navigation - Wave-1: Home, Naming Demo, Drawing Demo, Dashboard */}
           <nav className="hidden md:flex items-center space-x-8">
             <Link to="/" className="text-gray-600 hover:text-gray-900 transition-colors">
               Home
             </Link>
-            <Link to="/naming-demo" className="text-gray-600 hover:text-gray-900 transition-colors">
-              Naming Checker
+            <Link to="/naming-validator" className="text-gray-600 hover:text-gray-900 transition-colors">
+              Naming Demo
             </Link>
-            <Link to="/drawinglist-demo" className="text-gray-600 hover:text-gray-900 transition-colors">
-              Deliverables Tracker
+            <Link to="/deliverables-tracker" className="text-gray-600 hover:text-gray-900 transition-colors">
+              Drawing Demo
             </Link>
           </nav>
 
@@ -51,18 +54,20 @@ export const Header = () => {
           >
             {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
-        </div>        {/* Mobile Menu - Wave-1: Simplified navigation */}
+        </div>
+
+        {/* Mobile Menu - Wave-1: Simplified navigation */}
         {isMenuOpen && (
           <div className="md:hidden border-t border-gray-200 bg-white">
             <div className="py-4 space-y-4">
               <Link to="/" className="block text-gray-600 hover:text-gray-900 py-2">
                 Home
               </Link>
-              <Link to="/naming-demo" className="block text-gray-600 hover:text-gray-900 py-2">
-                Naming Checker
+              <Link to="/naming-validator" className="block text-gray-600 hover:text-gray-900 py-2">
+                Naming Demo
               </Link>
-              <Link to="/drawinglist-demo" className="block text-gray-600 hover:text-gray-900 py-2">
-                Deliverables Tracker
+              <Link to="/deliverables-tracker" className="block text-gray-600 hover:text-gray-900 py-2">
+                Drawing Demo
               </Link>
               <Link to="/dashboard" className="block text-gray-600 hover:text-gray-900 py-2">
                 Dashboard

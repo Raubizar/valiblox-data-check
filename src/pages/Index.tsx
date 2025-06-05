@@ -1,13 +1,10 @@
 
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
-import { Features } from "@/components/Features";
-import { ToolsOverview } from "@/components/ToolsOverview";
-import { HowItWorks } from "@/components/HowItWorks";
-import { TrustSection } from "@/components/TrustSection";
-import { Impact } from "@/components/Impact";
-import { ComingSoon } from "@/components/ComingSoon";
-import { Footer } from "@/components/Footer";
+import { PainPointSection } from "@/components/PainPointSection";
+import { HowItWorksStrip } from "@/components/HowItWorksStrip";
+import { ToolsTeaser } from "@/components/ToolsTeaser";
+import { MinimalFooter } from "@/components/MinimalFooter";
 
 const Index = () => {
   return (
@@ -15,14 +12,11 @@ const Index = () => {
       <Header />
       <main>
         <Hero />
-        <Features />
-        <ToolsOverview />
-        <HowItWorks />
-        <TrustSection />
-        <Impact />
-        <ComingSoon />
+        <PainPointSection />
+        <HowItWorksStrip />
+        <ToolsTeaser />
       </main>
-      <Footer />
+      <MinimalFooter />
     </div>
   );
 };
