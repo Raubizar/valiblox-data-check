@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { BarChart3, Upload, FileCheck, AlertTriangle, Download, FolderOpen, FileSpreadsheet, Search, Filter, CheckCircle } from "lucide-react";
+import { BarChart3, Upload, FileCheck, AlertTriangle, Download, FolderOpen, FileSpreadsheet, Search, Filter, CheckCircle, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,8 @@ import { SampleLoadBox } from "@/components/SampleLoadBox";
 import { useSampleLoader } from "@/hooks/useSampleLoader";
 import { DownloadModal } from "@/components/DownloadModal";
 import { useAuth } from "@/hooks/useAuth";
+import { ProjectService } from "@/lib/projectService";
+import type { Project } from "@/types/database";
 
 const STEPS = [
   { id: 1, title: 'Upload Excel', description: 'Select your deliverables list' },
@@ -75,10 +77,13 @@ const DeliverablesTracker = () => {
     // Sample loader state
   const [showSampleLoader, setShowSampleLoader] = useState<boolean>(true);
   const { loadSampleZip, isLoading, loadingProgress } = useSampleLoader();
-  
-  // Auth and download modal state
+    // Auth and download modal state
   const { user, isAuthenticated } = useAuth();
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+  
+  // Project management state
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Timing and scroll state
   const [comparisonStartTime, setComparisonStartTime] = useState<number | null>(null);
@@ -184,8 +189,64 @@ const DeliverablesTracker = () => {
         Notes: 'File not in deliverables list'
       }))
     ];
-    
-    exportToCSV(exportData, `deliverables-comparison-${new Date().toISOString().split('T')[0]}.csv`);
+      exportToCSV(exportData, `deliverables-comparison-${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  // Handle save to project
+  const handleSaveToProject = async () => {
+    if (!comparisonResult || !selectedProject) return;
+
+    try {
+      setIsSaving(true);
+
+      // Save drawing list if we have one
+      let drawingListId: string | undefined;
+      if (excelFile) {
+        const savedDrawingList = await ProjectService.saveDrawingList(
+          excelFile,
+          selectedProject.id,
+          selectedSheet,
+          selectedColumn,
+          drawingList.length,
+          `Deliverables List - ${new Date().toISOString().split('T')[0]}`
+        );
+        drawingListId = savedDrawingList.id;
+      }
+
+      // Create summary statistics
+      const summary = {
+        totalItems: comparisonResult.matched.length + comparisonResult.unmatchedInList.length,
+        matchedCount: comparisonResult.matched.length,
+        missingCount: comparisonResult.unmatchedInList.length,
+        extraCount: comparisonResult.unmatchedInFiles.length,
+        completionPercentage: comparisonResult.percentageFound,
+        processingTime: comparisonDuration
+      };
+
+      // Save the report
+      await ProjectService.saveReport({
+        project_id: selectedProject.id,
+        drawing_list_id: drawingListId,
+        naming_standard_id: undefined,
+        report_type: 'deliverables',
+        title: `Deliverables Report - ${new Date().toLocaleDateString()}`,
+        results: {
+          matched: comparisonResult.matched,
+          unmatchedInList: comparisonResult.unmatchedInList,
+          unmatchedInFiles: comparisonResult.unmatchedInFiles,
+          percentageFound: comparisonResult.percentageFound
+        },
+        summary
+      });
+
+      // Show success message (you can replace this with a toast notification)
+      alert(`Report saved to project "${selectedProject.name}" successfully!`);
+    } catch (error) {
+      console.error('Error saving to project:', error);
+      alert('Failed to save report. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Handle Excel file upload
@@ -451,11 +512,8 @@ const DeliverablesTracker = () => {
                   {isLoading ? 'Loading sample...' : 'Try sample project'}
                 </button>
               )}
-            </div>
-          </div>
-
-          {/* Step Progress Indicator */}
-          <StepIndicator currentStep={currentStep} />          {/* Progressive Steps Layout */}
+            </div>          </div>          {/* Step Progress Indicator */}
+          <StepIndicator currentStep={currentStep} />{/* Progressive Steps Layout */}
           <div className="space-y-6">
             {/* Step 1: Excel Upload - Always visible */}
             <div className="bg-white rounded-xl shadow-lg p-6 transition-all duration-300 ease-in-out">
@@ -750,11 +808,29 @@ const DeliverablesTracker = () => {
                       <SelectItem value="missing">Missing</SelectItem>
                       <SelectItem value="extra">Extra Files</SelectItem>
                     </SelectContent>
-                  </Select>
-                  <Button onClick={handleDownloadRequest} variant="outline" className="flex items-center">
+                  </Select>                  <Button onClick={handleDownloadRequest} variant="outline" className="flex items-center">
                     <Download className="w-4 h-4 mr-2" />
                     Export Results
                   </Button>
+                  {selectedProject && (
+                    <Button 
+                      onClick={handleSaveToProject} 
+                      disabled={isSaving}
+                      className="bg-green-600 hover:bg-green-700 text-white flex items-center"
+                    >
+                      {isSaving ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <FolderOpen className="w-4 h-4 mr-2" />
+                          Save to Project
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
 

@@ -4,9 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Download, Filter, ArrowUpDown, Search } from "lucide-react";
+import { CheckCircle, Download, Filter, ArrowUpDown, Search, Save, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { Project } from "@/types/database";
 
 interface ValidationResult {
   folderPath: string;
@@ -25,9 +26,19 @@ interface ValidationResultsProps {
   complianceData: ComplianceData;
   validationResults: ValidationResult[];
   onDownloadRequest?: () => void;
+  onSaveToProject?: () => void;
+  selectedProject?: Project | null;
+  isSaving?: boolean;
 }
 
-export const ValidationResults = ({ complianceData, validationResults, onDownloadRequest }: ValidationResultsProps) => {
+export const ValidationResults = ({ 
+  complianceData, 
+  validationResults, 
+  onDownloadRequest,
+  onSaveToProject,
+  selectedProject,
+  isSaving = false
+}: ValidationResultsProps) => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("folder");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -175,8 +186,9 @@ export const ValidationResults = ({ complianceData, validationResults, onDownloa
                 })}
               </div>
             </div>
-          </div>
-          <Progress value={complianceData.compliancePercentage} className="h-4 mb-6" />          <div className="text-center">
+          </div>          <Progress value={complianceData.compliancePercentage} className="h-4 mb-6" />
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button 
               onClick={onDownloadRequest || exportToCSV}
               className="bg-green-600 hover:bg-green-700 text-white px-8 py-3"
@@ -184,6 +196,26 @@ export const ValidationResults = ({ complianceData, validationResults, onDownloa
               <Download className="w-5 h-5 mr-2" />
               Export Detailed Report
             </Button>
+            
+            {selectedProject && onSaveToProject && (
+              <Button 
+                onClick={onSaveToProject}
+                disabled={isSaving}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5 mr-2" />
+                    Save to {selectedProject.name}
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -7,10 +7,13 @@ import { ProcessSteps } from "@/components/NamingValidator/ProcessSteps";
 import { ValidationResults } from "@/components/NamingValidator/ValidationResults";
 import { HowItWorks } from "@/components/NamingValidator/HowItWorks";
 import { FeaturesSection } from "@/components/NamingValidator/FeaturesSection";
+import { CompactProjectSelector } from "@/components/CompactProjectSelector";
 import { validateName, parseNamingRules, NamingRules } from "@/lib/naming";
+import { ProjectService } from "@/lib/projectService";
+import type { Project } from "@/types/database";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Upload, CheckCircle } from "lucide-react";
+import { Upload, CheckCircle, Loader2, FolderOpen } from "lucide-react";
 import { DownloadModal } from "@/components/DownloadModal";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -78,10 +81,17 @@ const NamingValidator = () => {
     compliancePercentage: 0
   });
   const [isProcessing, setIsProcessing] = useState(false);
-    // Timing and scroll state
+  
+  // Project management state
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Timing and scroll state
   const [validationStartTime, setValidationStartTime] = useState<number | null>(null);
   const [validationDuration, setValidationDuration] = useState<number | null>(null);
-  const resultsRef = useRef<HTMLDivElement>(null);  // Download modal state
+  const resultsRef = useRef<HTMLDivElement>(null);
+  
+  // Download modal state
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const { isAuthenticated } = useAuth();
 
@@ -98,7 +108,7 @@ const NamingValidator = () => {
     }
   };
 
-  const handleExportToCSV = () => {
+    const handleExportToCSV = () => {
     // Create CSV content
     let csvContent = "data:text/csv;charset=utf-8,";
     
@@ -127,6 +137,44 @@ const NamingValidator = () => {
     // Trigger download
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Handle save to project
+  const handleSaveToProject = async () => {
+    if (!validationComplete || !selectedProject) return;
+
+    try {
+      setIsSaving(true);
+
+      // Create summary statistics
+      const summary = {
+        totalFiles: complianceData.totalFiles,
+        compliantFiles: complianceData.compliantFiles,
+        compliancePercentage: complianceData.compliancePercentage,
+        processingTime: validationDuration
+      };      // Save the report
+      await ProjectService.saveReport({
+        project_id: selectedProject.id,
+        drawing_list_id: undefined,
+        naming_standard_id: undefined, // We could save the naming standard file here in the future
+        report_type: 'naming',
+        title: `Naming Validation Report - ${new Date().toLocaleDateString()}`,
+        results: {
+          validationResults,
+          complianceData,
+          processingTime: validationDuration
+        },
+        summary
+      });
+
+      // Show success message (you can replace this with a toast notification)
+      alert(`Validation report saved to project "${selectedProject.name}" successfully!`);
+    } catch (error) {
+      console.error('Error saving to project:', error);
+      alert('Failed to save report. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };const handleTemplateUpload = (namingConvention: any[][]) => {
     try {
       const rules = parseNamingRules(namingConvention);
@@ -277,6 +325,12 @@ const NamingValidator = () => {
               </Button>            )}
           </div>
 
+          {/* Compact Project Selection */}
+          <CompactProjectSelector
+            selectedProject={selectedProject}
+            onProjectSelect={setSelectedProject}
+          />
+
           {/* Step Progress Indicator */}
           <StepIndicator currentStep={currentStep} />
 
@@ -288,11 +342,13 @@ const NamingValidator = () => {
           />
 
           {validationComplete && (
-            <div ref={resultsRef}>
-              <ValidationResults 
+            <div ref={resultsRef}>              <ValidationResults 
                 complianceData={complianceData}
                 validationResults={validationResults}
                 onDownloadRequest={handleDownloadRequest}
+                onSaveToProject={handleSaveToProject}
+                selectedProject={selectedProject}
+                isSaving={isSaving}
               />
             </div>
           )}
