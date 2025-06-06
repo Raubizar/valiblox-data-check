@@ -124,15 +124,14 @@ const DeliverablesTracker = () => {
     }
     
     return filteredResults;
-  }, [comparisonResult, selectedFilter, searchQuery]);
-  // Compute current step
+  }, [comparisonResult, selectedFilter, searchQuery]);  // Compute current step
   const currentStep = useMemo(() => {
     if (comparisonResult) return 5; // All steps completed
     if (uploadedFiles.length > 0 && drawingList.length > 0) return 4; // Files uploaded and ready for comparison
     if (drawingList.length > 0 && selectedColumn && selectedSheet) return 3; // Column configured, ready for file upload
     if (excelFile && sheets.length > 0) return 2; // Excel loaded, ready for configuration
     if (excelFile) return 1; // Excel file selected, still processing
-    return 0; // No file selected yet
+    return 1; // Start with step 1 visible
   }, [excelFile, sheets, selectedSheet, selectedColumn, drawingList, uploadedFiles, comparisonResult]);
 
   // Export functions
@@ -426,8 +425,7 @@ const DeliverablesTracker = () => {
       
       <Header />
       <main className="py-20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Hero Section */}
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">          {/* Hero Section */}
           <div className="text-center mb-16">
             <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 mb-6">
               Deliverables Tracker
@@ -435,47 +433,58 @@ const DeliverablesTracker = () => {
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
               Instantly compare your deliverables list with the files submitted. Spot missing files, duplicates, and naming issues in seconds.
             </p>
-            <Button 
-              size="lg" 
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
-              onClick={() => document.getElementById('excel-upload')?.click()}
-            >
-              <Upload className="w-5 h-5 mr-2" />
-              Start Tracking Deliverables
-            </Button>          </div>          {/* Sample Loader */}
-          {showSampleLoader && !excelFile && (
-            <div className="mb-8">
-              <SampleLoadBox
-                onLoadSample={handleLoadSample}
-                isLoading={isLoading}
-                loadingProgress={loadingProgress}
-                loadingStatus="Loading sample deliverables..."
-                title="Load Sample Deliverables Project"
-                description="Try our demo with a sample deliverables list and project files including matched, missing, and extra files"
-                sampleButtonText="Load Sample Project"
-              />
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button 
+                size="lg" 
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg"
+                onClick={() => document.getElementById('excel-upload')?.click()}
+              >
+                <Upload className="w-5 h-5 mr-2" />
+                Start Tracking Deliverables
+              </Button>
+              {!excelFile && (
+                <button
+                  onClick={handleLoadSample}
+                  disabled={isLoading}
+                  className="text-sm text-blue-600 hover:text-blue-700 underline transition-colors"
+                >
+                  {isLoading ? 'Loading sample...' : 'Try sample project'}
+                </button>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Step Progress Indicator */}
-          <StepIndicator currentStep={currentStep} />{/* Compact Steps Layout - Horizontal Grid */}
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Upload & Validate Deliverables</h2>
-            </div>
-            
-            <div className="grid lg:grid-cols-3 gap-6">              {/* Step 1: Excel Upload */}
-              <div className="relative">
-                <div className={`absolute -top-2 -left-2 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold z-10 ${
-                  currentStep > 1 ? 'bg-blue-600 text-white' : currentStep === 1 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'
-                }`}>
-                  {currentStep > 1 ? '✓' : '1'}
+          <StepIndicator currentStep={currentStep} />          {/* Progressive Steps Layout */}
+          <div className="space-y-6">
+            {/* Step 1: Excel Upload - Always visible */}
+            <div className="bg-white rounded-xl shadow-lg p-6 transition-all duration-300 ease-in-out">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mr-3 ${
+                    currentStep > 1 ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'
+                  }`}>
+                    {currentStep > 1 ? '✓' : '1'}
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900">Upload Excel Deliverables List</h3>
+                  {currentStep === 1 && !excelFile && (
+                    <button
+                      onClick={handleLoadSample}
+                      disabled={isLoading}
+                      className="ml-4 text-xs text-blue-600 hover:text-blue-700 underline transition-colors"
+                    >
+                      {isLoading ? 'Loading sample...' : 'try sample'}
+                    </button>
+                  )}
                 </div>
-                <div className="border-2 border-gray-200 rounded-lg p-4 h-full">
-                  <h3 className="text-base font-semibold text-gray-800 mb-3 flex items-center">
-                    <FileSpreadsheet className="w-4 h-4 mr-2" />
-                    Upload Excel List
-                  </h3>
+                {currentStep > 1 && (
+                  <Badge className="bg-green-100 text-green-800 text-xs">Completed</Badge>
+                )}
+              </div>
+              
+              {currentStep === 1 ? (
+                <div className="space-y-4">
+                  <p className="text-gray-600">Upload your Excel file containing the deliverables list to get started.</p>
                   <input
                     type="file"
                     accept=".xlsx,.xls"
@@ -483,42 +492,55 @@ const DeliverablesTracker = () => {
                     className="hidden"
                     id="excel-upload"
                   />
-                  <div className="space-y-3">
-                    <Button
-                      onClick={() => document.getElementById('excel-upload')?.click()}
-                      disabled={isProcessing}
-                      size="sm"
-                      className="w-full"
-                    >
-                      {isProcessing ? 'Processing...' : 'Choose File'}
-                    </Button>
-                    {excelFile && (
-                      <div className="p-2 bg-green-50 rounded text-center">
-                        <p className="text-xs text-green-800 font-medium">
-                          ✓ {excelFile.name}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                  <Button
+                    onClick={() => document.getElementById('excel-upload')?.click()}
+                    disabled={isProcessing}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    {isProcessing ? 'Processing...' : 'Choose Excel File'}
+                  </Button>
+                  {excelFile && (
+                    <div className="p-3 bg-green-50 rounded-lg animate-in fade-in duration-300">
+                      <p className="text-sm text-green-800 font-medium">
+                        ✓ {excelFile.name} uploaded successfully
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </div>              {/* Step 2: Sheet and Column Selection */}
-              <div className="relative">
-                <div className={`absolute -top-2 -left-2 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold z-10 ${
-                  currentStep > 2 ? 'bg-blue-600 text-white' : currentStep === 2 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'
-                }`}>
-                  {currentStep > 2 ? '✓' : '2'}
-                </div>                <div className={`border-2 rounded-lg p-4 h-full ${
-                  currentStep >= 2 ? 'border-gray-200' : 'border-gray-100 bg-gray-50'
-                }`}>
-                  <h3 className="text-base font-semibold text-gray-800 mb-3">
-                    Configure Columns
-                  </h3>
-                  {currentStep >= 2 ? (
-                    <div className="space-y-3">
+              ) : (
+                <div className="flex items-center text-sm text-gray-600">
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  <span>{excelFile?.name}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Step 2: Configure Columns - Only visible after Excel upload */}
+            {currentStep >= 2 && (
+              <div className="bg-white rounded-xl shadow-lg p-6 transition-all duration-300 ease-in-out animate-in fade-in slide-in-from-bottom">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mr-3 ${
+                      currentStep > 2 ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'
+                    }`}>
+                      {currentStep > 2 ? '✓' : '2'}
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900">Configure Sheet and Column</h3>
+                  </div>
+                  {currentStep > 2 && (
+                    <Badge className="bg-green-100 text-green-800 text-xs">Completed</Badge>
+                  )}
+                </div>
+                
+                {currentStep === 2 ? (
+                  <div className="space-y-4">
+                    <p className="text-gray-600">Select the sheet and column containing your deliverables list.</p>
+                    <div className="grid md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Sheet:</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Sheet:</label>
                         <Select value={selectedSheet} onValueChange={handleSheetChange}>
-                          <SelectTrigger className="h-8 text-sm">
+                          <SelectTrigger>
                             <SelectValue placeholder="Choose sheet" />
                           </SelectTrigger>
                           <SelectContent>
@@ -529,9 +551,9 @@ const DeliverablesTracker = () => {
                         </Select>
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Column:</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Column:</label>
                         <Select value={selectedColumn} onValueChange={handleColumnChange}>
-                          <SelectTrigger className="h-8 text-sm">
+                          <SelectTrigger>
                             <SelectValue placeholder="Choose column" />
                           </SelectTrigger>
                           <SelectContent>
@@ -541,83 +563,98 @@ const DeliverablesTracker = () => {
                           </SelectContent>
                         </Select>
                       </div>
-                      {drawingList.length > 0 && (
-                        <div className="p-2 bg-green-50 rounded text-center">
-                          <p className="text-xs text-green-800 font-medium">
-                            ✓ {drawingList.length} drawings found
-                          </p>
-                        </div>
-                      )}
                     </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">Upload Excel file first</p>
-                  )}
-                </div>
-              </div>              {/* Step 3: File Upload */}
-              <div className="relative">
-                <div className={`absolute -top-2 -left-2 w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold z-10 ${
-                  currentStep > 3 ? 'bg-blue-600 text-white' : currentStep === 3 ? 'bg-blue-500 text-white' : 'bg-gray-300 text-gray-600'
-                }`}>
-                  {currentStep > 3 ? '✓' : '3'}
-                </div>                <div className={`border-2 rounded-lg p-4 h-full ${
-                  currentStep >= 3 ? 'border-gray-200' : 'border-gray-100 bg-gray-50'
-                }`}>
-                  <h3 className="text-base font-semibold text-gray-800 mb-3 flex items-center">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload Files
-                  </h3>
-                  {currentStep >= 3 ? (
-                    <div className="space-y-3">
-                      <input
-                        type="file"
-                        multiple
-                        onChange={handleFileUpload}
-                        className="hidden"
-                        id="file-upload"
-                      />
-                      <Button
-                        onClick={() => document.getElementById('file-upload')?.click()}
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                      >
-                        Select Files
-                      </Button>
-                      <div className="text-center text-xs text-gray-500">or</div>
-                      <Button
-                        onClick={handleFolderSelect}
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        disabled={isProcessing}
-                      >
-                        <FolderOpen className="w-3 h-3 mr-1" />
-                        Select Folder
-                      </Button>
-                      <div className="flex items-center space-x-1">
-                        <Checkbox
-                          id="include-subfolders"
-                          checked={includeSubfolders}
-                          onCheckedChange={(checked) => setIncludeSubfolders(checked as boolean)}
-                        />
-                        <label htmlFor="include-subfolders" className="text-xs text-gray-600 cursor-pointer">
-                          Include subfolders
-                        </label>
+                    {drawingList.length > 0 && (
+                      <div className="p-3 bg-green-50 rounded-lg animate-in fade-in duration-300">
+                        <p className="text-sm text-green-800 font-medium">
+                          ✓ Found {drawingList.length} deliverables in column "{selectedColumn}"
+                        </p>
                       </div>
-                      {uploadedFiles.length > 0 && (
-                        <div className="p-2 bg-green-50 rounded text-center">
-                          <p className="text-xs text-green-800 font-medium">
-                            ✓ {uploadedFiles.length} files uploaded
-                          </p>
-                        </div>
-                      )}
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center text-sm text-gray-600">
+                    <span>Sheet: {selectedSheet} • Column: {selectedColumn} • {drawingList.length} items</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 3: Upload Files - Only visible after column configuration */}
+            {currentStep >= 3 && (
+              <div className="bg-white rounded-xl shadow-lg p-6 transition-all duration-300 ease-in-out animate-in fade-in slide-in-from-bottom">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mr-3 ${
+                      currentStep > 3 ? 'bg-blue-600 text-white' : 'bg-blue-500 text-white'
+                    }`}>
+                      {currentStep > 3 ? '✓' : '3'}
                     </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">Configure columns first</p>
+                    <h3 className="text-lg font-semibold text-gray-900">Upload Project Files</h3>
+                  </div>
+                  {currentStep > 3 && (
+                    <Badge className="bg-green-100 text-green-800 text-xs">Completed</Badge>
                   )}
                 </div>
+                
+                {currentStep === 3 ? (
+                  <div className="space-y-4">
+                    <p className="text-gray-600">Upload the project files to compare against your deliverables list.</p>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div>
+                        <input
+                          type="file"
+                          multiple
+                          onChange={handleFileUpload}
+                          className="hidden"
+                          id="file-upload"
+                        />
+                        <Button
+                          onClick={() => document.getElementById('file-upload')?.click()}
+                          variant="outline"
+                          className="w-full"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Select Files
+                        </Button>
+                      </div>
+                      <div>
+                        <Button
+                          onClick={handleFolderSelect}
+                          variant="outline"
+                          className="w-full"
+                          disabled={isProcessing}
+                        >
+                          <FolderOpen className="w-4 h-4 mr-2" />
+                          Select Folder
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="include-subfolders"
+                        checked={includeSubfolders}
+                        onCheckedChange={(checked) => setIncludeSubfolders(checked as boolean)}
+                      />
+                      <label htmlFor="include-subfolders" className="text-sm text-gray-600 cursor-pointer">
+                        Include subfolders in search
+                      </label>
+                    </div>
+                    {uploadedFiles.length > 0 && (
+                      <div className="p-3 bg-green-50 rounded-lg animate-in fade-in duration-300">
+                        <p className="text-sm text-green-800 font-medium">
+                          ✓ {uploadedFiles.length} files uploaded and compared
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center text-sm text-gray-600">
+                    <span>{uploadedFiles.length} files uploaded</span>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
 
           {/* Summary Table */}
@@ -786,8 +823,7 @@ const DeliverablesTracker = () => {
                 </div>
               </div>
 
-              {/* Results Summary */}
-              <div className="mt-4 text-sm text-gray-600">
+              {/* Results Summary */}              <div className="mt-4 text-sm text-gray-600">
                 Showing {unifiedResults.length} of {
                   comparisonResult.matched.length + 
                   comparisonResult.unmatchedInList.length + 
@@ -797,67 +833,115 @@ const DeliverablesTracker = () => {
             </div>
           )}
 
-          {/* Features Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-            <Card className="text-center">
-              <CardHeader>
-                <BarChart3 className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                <CardTitle>Real-time Tracking</CardTitle>
-                <CardDescription>
-                  Monitor deliverable status in real-time with live updates and notifications
-                </CardDescription>
-              </CardHeader>
-            </Card>
+          {/* How It Works Section */}
+          <div className="grid lg:grid-cols-2 gap-16 mb-16 mt-24">
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-8">How It Works</h2>
+              <div className="space-y-6">
+                <div className="flex items-start space-x-4">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-blue-600 font-bold">1</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 text-lg">Upload Deliverables List</h3>
+                    <p className="text-gray-600 leading-relaxed">
+                      Upload your Excel file containing the project deliverables list with drawing names, descriptions, and requirements.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-4">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-blue-600 font-bold">2</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 text-lg">Upload Project Files</h3>
+                    <p className="text-gray-600 leading-relaxed">Select your project files or entire folders to compare against the deliverables list.</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-4">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-blue-600 font-bold">3</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 text-lg">Get Comprehensive Report</h3>
+                    <p className="text-gray-600 leading-relaxed">Receive detailed comparison results showing matched files, missing deliverables, and extra files.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-            <Card className="text-center">
-              <CardHeader>
-                <FileCheck className="w-12 h-12 text-green-600 mx-auto mb-4" />
-                <CardTitle>Smart Matching</CardTitle>
-                <CardDescription>
-                  Automatically match submitted files with your deliverables list
-                </CardDescription>
-              </CardHeader>
-            </Card>
+            <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
+              <h3 className="text-xl font-bold text-gray-900 mb-6">Sample Deliverables Report</h3>
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg border border-green-200">
+                  <FileCheck className="w-5 h-5 text-green-500" />
+                  <span className="text-sm font-medium text-gray-700">ABC-STR-001.dwg</span>
+                  <span className="text-xs text-green-600 ml-auto font-semibold">✓ Found</span>
+                </div>
+                <div className="flex items-center space-x-3 p-4 bg-green-50 rounded-lg border border-green-200">
+                  <FileCheck className="w-5 h-5 text-green-500" />
+                  <span className="text-sm font-medium text-gray-700">ABC-MEP-002.pdf</span>
+                  <span className="text-xs text-green-600 ml-auto font-semibold">✓ Found</span>
+                </div>
+                <div className="flex items-center space-x-3 p-4 bg-red-50 rounded-lg border border-red-200">
+                  <AlertTriangle className="w-5 h-5 text-red-500" />
+                  <span className="text-sm font-medium text-gray-700">ABC-ARC-003.dwg</span>
+                  <span className="text-xs text-red-600 ml-auto font-semibold">✗ Missing</span>
+                </div>
+                <div className="flex items-center space-x-3 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                  <Upload className="w-5 h-5 text-yellow-500" />
+                  <span className="text-sm font-medium text-gray-700">Extra-Document.docx</span>
+                  <span className="text-xs text-yellow-600 ml-auto font-semibold">+ Extra</span>
+                </div>
+                <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-800">
+                    <strong>Summary:</strong> 85% deliverables found. 2 missing files need attention before project milestone.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
 
-            <Card className="text-center">
-              <CardHeader>
-                <AlertTriangle className="w-12 h-12 text-yellow-600 mx-auto mb-4" />
-                <CardTitle>Issue Detection</CardTitle>
-                <CardDescription>
-                  Identify missing files, duplicates, and naming inconsistencies
-                </CardDescription>
-              </CardHeader>
-            </Card>
+          {/* Powerful Features Section */}
+          <div className="mb-16">
+            <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">Powerful Features</h2>
+            <div className="grid md:grid-cols-3 gap-8">
+              <Card className="text-center p-8 border-2 border-gray-100 hover:border-blue-200 transition-all duration-300 hover:shadow-lg">
+                <CardHeader>
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <BarChart3 className="w-8 h-8 text-blue-600" />
+                  </div>
+                  <CardTitle className="text-xl text-gray-900">Smart Analytics</CardTitle>
+                  <CardDescription className="text-gray-600 leading-relaxed">
+                    Real-time progress tracking with completion percentages and detailed delivery status analytics.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
 
-            <Card className="text-center">
-              <CardHeader>
-                <Download className="w-12 h-12 text-purple-600 mx-auto mb-4" />
-                <CardTitle>Custom Reports</CardTitle>
-                <CardDescription>
-                  Generate detailed reports for stakeholders and project teams
-                </CardDescription>
-              </CardHeader>
-            </Card>
+              <Card className="text-center p-8 border-2 border-gray-100 hover:border-blue-200 transition-all duration-300 hover:shadow-lg">
+                <CardHeader>
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FileCheck className="w-8 h-8 text-green-600" />
+                  </div>
+                  <CardTitle className="text-xl text-gray-900">Automated Matching</CardTitle>
+                  <CardDescription className="text-gray-600 leading-relaxed">
+                    Intelligent file matching algorithms that handle naming variations and multiple file formats.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
 
-            <Card className="text-center">
-              <CardHeader>
-                <Upload className="w-12 h-12 text-indigo-600 mx-auto mb-4" />
-                <CardTitle>Bulk Upload</CardTitle>
-                <CardDescription>
-                  Upload and process hundreds of files simultaneously
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card className="text-center">
-              <CardHeader>
-                <BarChart3 className="w-12 h-12 text-pink-600 mx-auto mb-4" />
-                <CardTitle>Progress Analytics</CardTitle>
-                <CardDescription>
-                  Track completion rates and identify bottlenecks in your workflow
-                </CardDescription>
-              </CardHeader>
-            </Card>
+              <Card className="text-center p-8 border-2 border-gray-100 hover:border-blue-200 transition-all duration-300 hover:shadow-lg">
+                <CardHeader>
+                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Download className="w-8 h-8 text-purple-600" />
+                  </div>
+                  <CardTitle className="text-xl text-gray-900">Export Reports</CardTitle>
+                  <CardDescription className="text-gray-600 leading-relaxed">
+                    Generate comprehensive CSV reports for project management and stakeholder communication.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </div>
           </div>
 
           {/* CTA Section */}

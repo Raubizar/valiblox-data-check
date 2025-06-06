@@ -1,6 +1,7 @@
 import { useState, useRef, ChangeEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Upload, Download, Folder, File, AlertCircle } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { createTemplateFile } from "@/lib/naming";
@@ -27,8 +28,7 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   
-  const { loadSampleZip, isLoading, loadingProgress, loadingStatus } = useSampleLoader();
-    // Check browser compatibility on mount
+  const { loadSampleZip, isLoading, loadingProgress, loadingStatus } = useSampleLoader();  // Check browser compatibility on mount
   useEffect(() => {
     const fsApiSupported = supportsFileSystemAccessAPI();
     const isModern = isModernBrowser();
@@ -78,7 +78,8 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
       alert('Error reading the naming convention file. Please check the format and try again.');
     }
   };
-    const handleFolderSelect = async () => {
+
+  const handleFolderSelect = async () => {
     try {
       // Check if File System Access API is supported
       if (!supportsFileSystemAccessAPI()) {
@@ -113,7 +114,8 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
           }
         }
       };
-        await traverseDirectory(directoryHandle);
+
+      await traverseDirectory(directoryHandle);
       
       if (files.length === 0) {
         alert("No files found in the selected folder. Please select a folder with files to validate.");
@@ -122,13 +124,16 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
       
       setShowSampleLoader(false); // Hide sample loader once folder is selected
       onFilesSelect(files);
+      setFilesSelected(files.length);
     } catch (error) {
       console.error('Error selecting folder:', error);
       if (error instanceof Error && error.name !== 'AbortError') {
         alert('Error selecting folder. Try using the file upload option instead.');
       }
     }
-  };  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+  };
+
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const files = e.target.files;
       setFilesSelected(files.length);
@@ -147,7 +152,7 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
       onFilesSelect(fileArray);
     }
   };
-  
+
   // Function to generate a template directly in the browser
   const generateTemplate = () => {
     try {
@@ -170,14 +175,161 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
       console.error('Error generating template:', error);
       alert('There was an error generating the template. Please try the download link instead.');
     }
-  };
-    return (
+  };  return (
     <div className="mb-16">
-      <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">Simple 3-Step Process</h2>
-      
+      {/* Progressive Steps Layout */}
+      <div className="space-y-6">
+        {/* Step 1: Template Upload - Always visible */}
+        <div className="bg-white rounded-xl shadow-lg p-6 transition-all duration-300 ease-in-out">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mr-3 ${
+                templateUploaded ? 'bg-green-600 text-white' : 'bg-green-500 text-white'
+              }`}>
+                {templateUploaded ? '✓' : '1'}
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Upload Naming Convention Template</h3>
+              {!templateUploaded && showSampleLoader && (
+                <button
+                  onClick={handleLoadSample}
+                  disabled={isLoading}
+                  className="ml-4 text-xs text-green-600 hover:text-green-700 underline transition-colors"
+                >
+                  {isLoading ? 'Loading sample...' : 'try sample'}
+                </button>
+              )}
+            </div>
+            {templateUploaded && (
+              <Badge className="bg-green-100 text-green-800 text-xs">Completed</Badge>
+            )}
+          </div>
+          
+          {!templateUploaded ? (
+            <div className="space-y-4">
+              <p className="text-gray-600">Upload your Excel naming convention template to get started.</p>
+              <div className="space-y-2">
+                <input 
+                  id="template-upload"
+                  type="file" 
+                  ref={templateInputRef}
+                  className="hidden" 
+                  accept=".xlsx,.xls" 
+                  onChange={handleTemplateFileChange} 
+                />
+                <Button 
+                  onClick={() => templateInputRef.current?.click()}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  disabled={isProcessing}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  {templateFileName ? `${templateFileName.length > 30 ? templateFileName.substring(0, 30) + '...' : templateFileName}` : 'Choose Template File'}
+                </Button>
+                
+                <div className="flex gap-2">
+                  <a 
+                    href="./Naming-Convention-Template.xlsx" 
+                    download="Naming-Convention-Template.xlsx"
+                    className="flex-1"
+                  >
+                    <Button variant="outline" size="sm" className="w-full border-green-600 text-green-600 hover:bg-green-50">
+                      <Download className="w-4 h-4 mr-1" />
+                      Download Template
+                    </Button>
+                  </a>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="flex-1 text-green-600 hover:bg-green-50"
+                    onClick={generateTemplate}
+                  >
+                    Generate
+                  </Button>
+                </div>
+              </div>
+              
+              {templateFileName && (
+                <div className="p-3 bg-green-50 rounded-lg animate-in fade-in duration-300">
+                  <p className="text-sm text-green-800 font-medium">
+                    ✓ Template loaded successfully
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center text-sm text-gray-600">
+              <Upload className="w-4 h-4 mr-2" />
+              <span>{templateFileName}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Step 2: File Selection - Only visible after template upload */}
+        {templateUploaded && (
+          <div className="bg-white rounded-xl shadow-lg p-6 transition-all duration-300 ease-in-out animate-in fade-in slide-in-from-bottom">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mr-3 ${
+                  filesSelected > 0 ? 'bg-green-600 text-white' : 'bg-green-500 text-white'
+                }`}>
+                  {filesSelected > 0 ? '✓' : '2'}
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Select Files to Validate</h3>
+              </div>
+              {filesSelected > 0 && (
+                <Badge className="bg-green-100 text-green-800 text-xs">Completed</Badge>
+              )}
+            </div>
+            
+            <div className="space-y-4">
+              <p className="text-gray-600">Choose files or folders to validate against your naming convention.</p>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef}
+                    className="hidden" 
+                    multiple 
+                    accept=".pdf,.dwg,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                    onChange={handleFileSelect} 
+                  />
+                  <Button 
+                    variant="outline"
+                    className="w-full border-green-600 text-green-600 hover:bg-green-50"
+                    disabled={isProcessing}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <File className="w-4 h-4 mr-2" />
+                    Select Files
+                  </Button>
+                </div>
+                <div>
+                  <Button 
+                    variant="outline"
+                    className="w-full border-green-600 text-green-600 hover:bg-green-50"
+                    disabled={isProcessing || !browserCompatible}
+                    onClick={handleFolderSelect}
+                  >
+                    <Folder className="w-4 h-4 mr-2" />
+                    Select Folder
+                  </Button>
+                </div>
+              </div>
+              
+              {filesSelected > 0 && (
+                <div className="p-3 bg-green-50 rounded-lg animate-in fade-in duration-300">
+                  <p className="text-sm text-green-800 font-medium">
+                    ✓ {filesSelected} files selected for validation
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Browser compatibility warning */}
       {!browserCompatible && (
-        <Alert variant="destructive" className="mb-8">
+        <Alert variant="destructive" className="mt-8">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Browser Compatibility Issue</AlertTitle>
           <AlertDescription>
@@ -186,155 +338,6 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
             <p className="mt-2 text-sm">You can still use the file upload option, but folder selection will not work.</p>
           </AlertDescription>
         </Alert>
-      )}
-      
-      <div className="grid lg:grid-cols-2 gap-8 mb-12">{/* Step 1: Download Template */}
-        <Card className="p-8 border-2 border-gray-100 hover:border-green-200 transition-all duration-300 hover:shadow-lg">
-          <div className="flex items-start space-x-6">
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-green-600 font-bold text-lg">1</span>
-            </div>
-            <div className="flex-1">              <h3 className="text-xl font-semibold text-gray-900 mb-3">Download Template</h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">Get the standard template for your project's naming convention.</p>
-              <div className="space-y-2">
-                <a href="./Naming-Convention-Template.xlsx" download="Naming-Convention-Template.xlsx">
-                  <Button variant="outline" className="w-full border-green-600 text-green-600 hover:bg-green-50">
-                    <Download className="w-5 h-5 mr-2" />
-                    Download Template
-                  </Button>
-                </a>
-                <Button 
-                  variant="ghost" 
-                  className="w-full text-green-600 hover:bg-green-50 text-sm"
-                  onClick={generateTemplate}
-                >
-                  Generate in Browser
-                </Button>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Step 2: Upload Your Convention */}
-        <Card className="p-8 border-2 border-gray-100 hover:border-green-200 transition-all duration-300 hover:shadow-lg">
-          <div className="flex items-start space-x-6">
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-green-600 font-bold text-lg">2</span>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">Upload Convention</h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">Upload your customized naming convention file.</p>
-              <input 
-                type="file" 
-                ref={templateInputRef}
-                className="hidden" 
-                accept=".xlsx,.xls" 
-                onChange={handleTemplateFileChange} 
-              />
-              <Button 
-                onClick={() => templateInputRef.current?.click()}
-                className={`w-full ${templateUploaded ? 'bg-green-600 hover:bg-green-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
-              >
-                <Upload className="w-5 h-5 mr-2" />
-                {templateFileName ? `${templateFileName} ✓` : 'Choose File'}
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </div>      {/* Step 3: Choose Validation Method or Sample Loader */}
-      {showSampleLoader && !templateUploaded ? (
-        <SampleLoadBox
-          onLoadSample={handleLoadSample}
-          onFileUpload={() => fileInputRef.current?.click()}
-          onFolderSelect={handleFolderSelect}
-          isLoading={isLoading}
-          loadingProgress={loadingProgress}
-          loadingStatus={loadingStatus}
-          title="Try Naming Validation Demo"
-          description="Load sample files to see how naming validation works"
-          sampleButtonText="Load Sample Project"
-          disabled={isProcessing}
-        />
-      ) : (
-        <Card className="p-8 border-2 border-gray-100 hover:border-green-200 transition-all duration-300 hover:shadow-lg">
-          <div className="flex items-start space-x-6">
-            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-green-600 font-bold text-lg">3</span>
-            </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">Choose Validation Method</h3>
-              <p className="text-gray-600 mb-6 leading-relaxed">Select files or folders to validate against your naming convention.</p>
-              <div className="grid md:grid-cols-3 gap-6 items-center">
-                <Button 
-                  onClick={handleFolderSelect}
-                  size="lg" 
-                  className="bg-green-600 hover:bg-green-700 text-white h-auto py-4 px-6"
-                  disabled={!templateUploaded || isProcessing}
-                >
-                  {isProcessing ? (
-                    <div className="flex items-center space-x-2">
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span>Processing...</span>
-                    </div>
-                  ) : (
-                    <>
-                      <Folder className="w-5 h-5 mr-2" />
-                      <div className="text-left">
-                        <div>Select Folder</div>
-                        <div className="text-sm opacity-90">{folderName || "Choose a folder"}</div>
-                      </div>
-                    </>
-                  )}
-                </Button>
-                
-                <div className="flex items-center justify-center">
-                  <span className="text-gray-400 font-medium text-lg">OR</span>
-                </div>
-                
-                <div>
-                  <input 
-                    type="file" 
-                    ref={fileInputRef}
-                    className="hidden" 
-                    multiple
-                    accept=".pdf,.dwg,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" 
-                    onChange={handleFileSelect} 
-                  />
-                  <Button 
-                    size="lg" 
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="border-green-600 text-green-600 hover:bg-green-50 h-auto py-4 px-6 w-full"
-                    disabled={!templateUploaded || isProcessing}
-                  >
-                    {isProcessing ? (
-                      <div className="flex items-center space-x-2">
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span>Processing...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <File className="w-5 h-5 mr-2" />
-                        <div className="text-left">
-                          <div>Select Files</div>
-                          <div className="text-sm opacity-75">
-                            {filesSelected > 0 ? `${filesSelected} files selected` : "multiple files"}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
       )}
     </div>
   );
