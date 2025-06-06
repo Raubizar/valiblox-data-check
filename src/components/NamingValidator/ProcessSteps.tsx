@@ -1,4 +1,3 @@
-
 import { useState, useRef, ChangeEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -7,6 +6,8 @@ import * as XLSX from 'xlsx';
 import { createTemplateFile } from "@/lib/naming";
 import { supportsFileSystemAccessAPI, isModernBrowser, getBrowserInfo } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { SampleLoadBox } from "@/components/SampleLoadBox";
+import { useSampleLoader } from "@/hooks/useSampleLoader";
 
 interface ProcessStepsProps {
   onTemplateUpload: (rules: any[][]) => void;
@@ -21,17 +22,42 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
   const [filesSelected, setFilesSelected] = useState<number>(0);
   const [browserCompatible, setBrowserCompatible] = useState<boolean>(true);
   const [browserInfo, setBrowserInfo] = useState<{ name: string, version: string }>({ name: "", version: "" });
+  const [showSampleLoader, setShowSampleLoader] = useState<boolean>(true);
   const templateInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   
-  // Check browser compatibility on mount
+  const { loadSampleZip, isLoading, loadingProgress, loadingStatus } = useSampleLoader();
+    // Check browser compatibility on mount
   useEffect(() => {
     const fsApiSupported = supportsFileSystemAccessAPI();
     const isModern = isModernBrowser();
     setBrowserCompatible(fsApiSupported && isModern);
     setBrowserInfo(getBrowserInfo());
   }, []);
+
+  // Handle sample loading
+  const handleLoadSample = async () => {
+    try {
+      const result = await loadSampleZip('/sample/naming.zip');
+      
+      // If template data is included, load it automatically
+      if (result.templateData) {
+        onTemplateUpload(result.templateData);
+        setTemplateFileName('Sample-Naming-Convention.xlsx');
+      }
+      
+      // Load the sample files
+      if (result.files.length > 0) {
+        onFilesSelect(result.files);
+        setFilesSelected(result.files.length);
+        setShowSampleLoader(false);
+      }
+    } catch (error) {
+      console.error('Error loading sample:', error);
+      alert('Failed to load sample files. Please try uploading your own files instead.');
+    }
+  };
   
   const handleTemplateFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -87,14 +113,14 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
           }
         }
       };
-      
-      await traverseDirectory(directoryHandle);
+        await traverseDirectory(directoryHandle);
       
       if (files.length === 0) {
         alert("No files found in the selected folder. Please select a folder with files to validate.");
         return;
       }
       
+      setShowSampleLoader(false); // Hide sample loader once folder is selected
       onFilesSelect(files);
     } catch (error) {
       console.error('Error selecting folder:', error);
@@ -102,11 +128,11 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
         alert('Error selecting folder. Try using the file upload option instead.');
       }
     }
-  };
-  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+  };  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const files = e.target.files;
       setFilesSelected(files.length);
+      setShowSampleLoader(false); // Hide sample loader once files are selected
       
       // Create a default folder path for uploaded files
       const fileArray = Array.from(files).map(file => {
@@ -215,62 +241,39 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
             </div>
           </div>
         </Card>
-      </div>      {/* Step 3: Choose Validation Method */}
-      <Card className="p-8 border-2 border-gray-100 hover:border-green-200 transition-all duration-300 hover:shadow-lg">
-        <div className="flex items-start space-x-6">
-          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-green-600 font-bold text-lg">3</span>
-          </div>
-          <div className="flex-1">
-            <h3 className="text-xl font-semibold text-gray-900 mb-3">Choose Validation Method</h3>
-            <p className="text-gray-600 mb-6 leading-relaxed">Select files or folders to validate against your naming convention.</p>
-            <div className="grid md:grid-cols-3 gap-6 items-center">              <Button 
-                onClick={handleFolderSelect}
-                size="lg" 
-                className="bg-green-600 hover:bg-green-700 text-white h-auto py-4 px-6"
-                disabled={!templateUploaded || isProcessing}
-              >
-                {isProcessing ? (
-                  <div className="flex items-center space-x-2">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Processing...</span>
-                  </div>
-                ) : (
-                  <>
-                    <Folder className="w-5 h-5 mr-2" />
-                    <div className="text-left">
-                      <div>Select Folder</div>
-                      <div className="text-sm opacity-90">{folderName || "Choose a folder"}</div>
-                    </div>
-                  </>
-                )}
-              </Button>
-              
-              <div className="flex items-center justify-center">
-                <span className="text-gray-400 font-medium text-lg">OR</span>
-              </div>
-              
-              <div>
-                <input 
-                  type="file" 
-                  ref={fileInputRef}
-                  className="hidden" 
-                  multiple
-                  accept=".pdf,.dwg,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" 
-                  onChange={handleFileSelect} 
-                />                <Button 
+      </div>      {/* Step 3: Choose Validation Method or Sample Loader */}
+      {showSampleLoader && !templateUploaded ? (
+        <SampleLoadBox
+          onLoadSample={handleLoadSample}
+          onFileUpload={() => fileInputRef.current?.click()}
+          onFolderSelect={handleFolderSelect}
+          isLoading={isLoading}
+          loadingProgress={loadingProgress}
+          loadingStatus={loadingStatus}
+          title="Try Naming Validation Demo"
+          description="Load sample files to see how naming validation works"
+          sampleButtonText="Load Sample Project"
+          disabled={isProcessing}
+        />
+      ) : (
+        <Card className="p-8 border-2 border-gray-100 hover:border-green-200 transition-all duration-300 hover:shadow-lg">
+          <div className="flex items-start space-x-6">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-green-600 font-bold text-lg">3</span>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Choose Validation Method</h3>
+              <p className="text-gray-600 mb-6 leading-relaxed">Select files or folders to validate against your naming convention.</p>
+              <div className="grid md:grid-cols-3 gap-6 items-center">
+                <Button 
+                  onClick={handleFolderSelect}
                   size="lg" 
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-green-600 text-green-600 hover:bg-green-50 h-auto py-4 px-6 w-full"
+                  className="bg-green-600 hover:bg-green-700 text-white h-auto py-4 px-6"
                   disabled={!templateUploaded || isProcessing}
                 >
                   {isProcessing ? (
                     <div className="flex items-center space-x-2">
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
@@ -278,21 +281,61 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
                     </div>
                   ) : (
                     <>
-                      <File className="w-5 h-5 mr-2" />
+                      <Folder className="w-5 h-5 mr-2" />
                       <div className="text-left">
-                        <div>Select Files</div>
-                        <div className="text-sm opacity-75">
-                          {filesSelected > 0 ? `${filesSelected} files selected` : "multiple files"}
-                        </div>
+                        <div>Select Folder</div>
+                        <div className="text-sm opacity-90">{folderName || "Choose a folder"}</div>
                       </div>
                     </>
                   )}
                 </Button>
+                
+                <div className="flex items-center justify-center">
+                  <span className="text-gray-400 font-medium text-lg">OR</span>
+                </div>
+                
+                <div>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef}
+                    className="hidden" 
+                    multiple
+                    accept=".pdf,.dwg,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" 
+                    onChange={handleFileSelect} 
+                  />
+                  <Button 
+                    size="lg" 
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-green-600 text-green-600 hover:bg-green-50 h-auto py-4 px-6 w-full"
+                    disabled={!templateUploaded || isProcessing}
+                  >
+                    {isProcessing ? (
+                      <div className="flex items-center space-x-2">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Processing...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <File className="w-5 h-5 mr-2" />
+                        <div className="text-left">
+                          <div>Select Files</div>
+                          <div className="text-sm opacity-75">
+                            {filesSelected > 0 ? `${filesSelected} files selected` : "multiple files"}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
     </div>
   );
 };

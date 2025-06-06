@@ -8,6 +8,9 @@ import { ValidationResults } from "@/components/NamingValidator/ValidationResult
 import { HowItWorks } from "@/components/NamingValidator/HowItWorks";
 import { FeaturesSection } from "@/components/NamingValidator/FeaturesSection";
 import { validateName, parseNamingRules, NamingRules } from "@/lib/naming";
+import { Badge } from "@/components/ui/badge";
+import { DownloadModal } from "@/components/DownloadModal";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ValidationResultItem {
   folderPath: string;
@@ -22,7 +25,8 @@ interface ComplianceData {
   compliancePercentage: number;
 }
 
-const NamingValidator = () => {  const [templateUploaded, setTemplateUploaded] = useState(false);
+const NamingValidator = () => {
+  const [templateUploaded, setTemplateUploaded] = useState(false);
   const [filesSelected, setFilesSelected] = useState(false);
   const [validationComplete, setValidationComplete] = useState(false);
   const [namingRules, setNamingRules] = useState<NamingRules | null>(null);
@@ -32,7 +36,55 @@ const NamingValidator = () => {  const [templateUploaded, setTemplateUploaded] =
     compliantFiles: 0,
     compliancePercentage: 0
   });
-  const [isProcessing, setIsProcessing] = useState(false);  const handleTemplateUpload = (namingConvention: any[][]) => {
+  const [isProcessing, setIsProcessing] = useState(false);
+    // Timing and scroll state
+  const [validationStartTime, setValidationStartTime] = useState<number | null>(null);
+  const [validationDuration, setValidationDuration] = useState<number | null>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+    // Download modal state
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  const { isAuthenticated } = useAuth();
+
+  const handleDownloadRequest = () => {
+    if (isAuthenticated) {
+      // User is already authenticated, download immediately
+      handleExportToCSV();
+    } else {
+      // Show auth modal
+      setShowDownloadModal(true);
+    }
+  };
+
+  const handleExportToCSV = () => {
+    // Create CSV content
+    let csvContent = "data:text/csv;charset=utf-8,";
+    
+    // Add summary information
+    csvContent += `"Total Files Verified","${complianceData.totalFiles}"\n`;
+    csvContent += `"Names Comply","${complianceData.compliantFiles}"\n`;
+    csvContent += `"Compliance Percentage","${complianceData.compliancePercentage}%"\n\n`;
+    
+    // Add headers
+    csvContent += '"Folder Path","File Name","Status","Details"\n';
+    
+    // Add validation results
+    validationResults.forEach(result => {
+      // Remove HTML tags from details for CSV export
+      const cleanDetails = result.details.replace(/<[^>]*>/g, '');
+      csvContent += `"${result.folderPath}","${result.fileName}","${result.status}","${cleanDetails}"\n`;
+    });
+    
+    // Create download link
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "naming_validation_results.csv");
+    document.body.appendChild(link);
+    
+    // Trigger download
+    link.click();
+    document.body.removeChild(link);
+  };const handleTemplateUpload = (namingConvention: any[][]) => {
     try {
       const rules = parseNamingRules(namingConvention);
       setNamingRules(rules);
@@ -43,13 +95,16 @@ const NamingValidator = () => {  const [templateUploaded, setTemplateUploaded] =
       alert("There was an error parsing the naming convention. Please check the file format.");
     }
   };
-
   const handleFilesSelect = async (files: FileList | File[]) => {
     if (!namingRules) {
       alert("Please upload a naming convention template first.");
       return;
     }
 
+    // Start timing
+    const startTime = performance.now();
+    setValidationStartTime(startTime);
+    
     setIsProcessing(true);
     setFilesSelected(true);
     
@@ -99,14 +154,25 @@ const NamingValidator = () => {  const [templateUploaded, setTemplateUploaded] =
       // Calculate and update compliance data
       const fileCount = files.length;
       const compliancePercentage = fileCount > 0 ? Math.round((compliantCount / fileCount) * 100) : 0;
-      
-      setComplianceData({
+        setComplianceData({
         totalFiles: fileCount,
         compliantFiles: compliantCount,
         compliancePercentage
       });
       
+      // End timing and calculate duration
+      const endTime = performance.now();
+      const duration = (endTime - startTime) / 1000; // Convert to seconds
+      setValidationDuration(duration);
+      
       setValidationComplete(true);
+      
+      // Scroll to results with a small delay to ensure the component is rendered
+      setTimeout(() => {
+        if (resultsRef.current) {
+          resultsRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
     } catch (error) {
       console.error("Error processing files:", error);
       alert("There was an error processing the files. Please try again.");
@@ -135,11 +201,19 @@ const NamingValidator = () => {  const [templateUploaded, setTemplateUploaded] =
     });
     
     return flatResults;
-  };
-  return (
+  };  return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
       <Header />
-      <main className="py-12 lg:py-20">
+      
+      {/* Timing Badge - Fixed position top-right */}
+      {validationComplete && validationDuration !== null && (
+        <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top duration-500">
+          <Badge className="bg-green-600 text-white px-4 py-2 text-sm font-medium shadow-lg">
+            Generated in {validationDuration.toFixed(1)}s
+          </Badge>
+        </div>
+      )}
+        <main className="py-12 lg:py-20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">          <HeroSection validationComplete={validationComplete} />
 
           <ProcessSteps 
@@ -150,10 +224,13 @@ const NamingValidator = () => {  const [templateUploaded, setTemplateUploaded] =
           />
 
           {validationComplete && (
-            <ValidationResults 
-              complianceData={complianceData}
-              validationResults={validationResults}
-            />
+            <div ref={resultsRef}>
+              <ValidationResults 
+                complianceData={complianceData}
+                validationResults={validationResults}
+                onDownloadRequest={handleDownloadRequest}
+              />
+            </div>
           )}
 
           {!validationComplete && <HowItWorks />}
@@ -161,6 +238,16 @@ const NamingValidator = () => {  const [templateUploaded, setTemplateUploaded] =
           <FeaturesSection />
         </div>
       </main>
+      
+      {/* Download Modal */}
+      <DownloadModal
+        isOpen={showDownloadModal}
+        onClose={() => setShowDownloadModal(false)}
+        onDownload={handleExportToCSV}
+        title="Download Validation Report"
+        description="Enter your email to receive your naming validation report"
+      />
+      
       <Footer />
     </div>
   );

@@ -24,9 +24,10 @@ interface ComplianceData {
 interface ValidationResultsProps {
   complianceData: ComplianceData;
   validationResults: ValidationResult[];
+  onDownloadRequest?: () => void;
 }
 
-export const ValidationResults = ({ complianceData, validationResults }: ValidationResultsProps) => {
+export const ValidationResults = ({ complianceData, validationResults, onDownloadRequest }: ValidationResultsProps) => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("folder");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -177,7 +178,7 @@ export const ValidationResults = ({ complianceData, validationResults }: Validat
           </div>
           <Progress value={complianceData.compliancePercentage} className="h-4 mb-6" />          <div className="text-center">
             <Button 
-              onClick={exportToCSV}
+              onClick={onDownloadRequest || exportToCSV}
               className="bg-green-600 hover:bg-green-700 text-white px-8 py-3"
             >
               <Download className="w-5 h-5 mr-2" />

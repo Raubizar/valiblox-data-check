@@ -29,13 +29,15 @@ export const ToolsTeaser = () => {
               <CardDescription className="text-gray-600 text-lg mt-2">
                 Instantly check if your files follow naming conventions
               </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center">
-              <Link to="/naming-demo">
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 w-full">
-                  Try Demo
-                </Button>
-              </Link>
+            </CardHeader>            <CardContent className="text-center">
+              <div className="flex flex-col">
+                <Link to="/naming-demo">
+                  <Button size="lg" className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 w-full">
+                    Open Naming Demo →
+                  </Button>
+                </Link>
+                <p className="text-sm text-gray-500 mt-2">No sign-up needed</p>
+              </div>
             </CardContent>
           </Card>
 
@@ -51,13 +53,15 @@ export const ToolsTeaser = () => {
               <CardDescription className="text-gray-600 text-lg mt-2">
                 Verify your deliverables list against actual files
               </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center">
-              <Link to="/drawinglist-demo">
-                <Button size="lg" className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 w-full">
-                  Try Demo
-                </Button>
-              </Link>
+            </CardHeader>            <CardContent className="text-center">
+              <div className="flex flex-col">
+                <Link to="/drawinglist-demo">
+                  <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 w-full">
+                    Open Deliverables Demo →
+                  </Button>
+                </Link>
+                <p className="text-sm text-gray-500 mt-2">No sign-up needed</p>
+              </div>
             </CardContent>
           </Card>
         </div>

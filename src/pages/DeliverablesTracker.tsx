@@ -7,10 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import * as XLSX from 'xlsx';
 import { compare, ComparisonResult } from "@/lib/drawingList";
 import { supportsFileSystemAccessAPI } from "@/lib/utils";
+import { SampleLoadBox } from "@/components/SampleLoadBox";
+import { useSampleLoader } from "@/hooks/useSampleLoader";
+import { DownloadModal } from "@/components/DownloadModal";
+import { useAuth } from "@/hooks/useAuth";
 
 const STEPS = [
   { id: 1, title: 'Upload Excel', description: 'Select your deliverables list' },
@@ -68,6 +72,18 @@ const DeliverablesTracker = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'matched' | 'missing' | 'extra'>('all');
   const [includeSubfolders, setIncludeSubfolders] = useState<boolean>(true);
+    // Sample loader state
+  const [showSampleLoader, setShowSampleLoader] = useState<boolean>(true);
+  const { loadSampleZip, isLoading, loadingProgress } = useSampleLoader();
+  
+  // Auth and download modal state
+  const { user, isAuthenticated } = useAuth();
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+  
+  // Timing and scroll state
+  const [comparisonStartTime, setComparisonStartTime] = useState<number | null>(null);
+  const [comparisonDuration, setComparisonDuration] = useState<number | null>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   // Create unified results table data
   const unifiedResults = useMemo(() => {
@@ -138,8 +154,15 @@ const DeliverablesTracker = () => {
     a.click();
     window.URL.revokeObjectURL(url);
   };
+  const handleDownloadRequest = () => {
+    if (isAuthenticated) {
+      handleExportResults();
+    } else {
+      setShowDownloadModal(true);
+    }
+  };
 
-  const exportResults = () => {
+  const handleExportResults = () => {
     if (!comparisonResult) return;
     
     const exportData = [
@@ -242,7 +265,6 @@ const DeliverablesTracker = () => {
       loadDrawingList(sheet, columnIndex);
     }
   };
-
   // Handle file upload for comparison
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -250,8 +272,25 @@ const DeliverablesTracker = () => {
     setUploadedFiles(fileNames);
     
     if (drawingList.length > 0) {
+      // Start timing
+      const startTime = performance.now();
+      setComparisonStartTime(startTime);
+      
       const result = compare(drawingList, fileNames);
+      
+      // End timing and calculate duration
+      const endTime = performance.now();
+      const duration = (endTime - startTime) / 1000; // Convert to seconds
+      setComparisonDuration(duration);
+      
       setComparisonResult(result);
+      
+      // Scroll to results with a small delay to ensure the component is rendered
+      setTimeout(() => {
+        if (resultsRef.current) {
+          resultsRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
     }
   };
   // Handle folder selection (if supported)
@@ -277,13 +316,29 @@ const DeliverablesTracker = () => {
           }
         }
       };
-      
-      await traverseDirectory(directoryHandle);
+        await traverseDirectory(directoryHandle);
       setUploadedFiles(files);
       
       if (drawingList.length > 0) {
+        // Start timing
+        const startTime = performance.now();
+        setComparisonStartTime(startTime);
+        
         const result = compare(drawingList, files);
+        
+        // End timing and calculate duration
+        const endTime = performance.now();
+        const duration = (endTime - startTime) / 1000; // Convert to seconds
+        setComparisonDuration(duration);
+        
         setComparisonResult(result);
+        
+        // Scroll to results with a small delay to ensure the component is rendered
+        setTimeout(() => {
+          if (resultsRef.current) {
+            resultsRef.current.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 100);
       }
     } catch (error) {
       console.error('Error selecting folder:', error);
@@ -291,8 +346,84 @@ const DeliverablesTracker = () => {
       setIsProcessing(false);
     }
   };
-  return (
+
+  // Handle sample loading
+  const handleLoadSample = async () => {
+    try {
+      setShowSampleLoader(false);
+      const result = await loadSampleZip('/sample/deliverables.zip');
+      
+      if (result.templateData) {
+        // Process the deliverables list CSV
+        const templateData = result.templateData as string[][];
+        if (templateData.length > 1) {
+          // Extract drawing names from the first column (skipping header)
+          const drawings = templateData
+            .slice(1)
+            .map(row => row[0])
+            .filter(name => typeof name === 'string' && name.trim() !== '');
+          
+          setDrawingList(drawings);
+          
+          // Set mock Excel file state to proceed to next step
+          setExcelFile(new File([''], 'sample-deliverables.csv', { type: 'text/csv' }));
+          setSheets(['Sample Sheet']);
+          setSelectedSheet('Sample Sheet');
+          setColumns(['Drawing Name', 'Description', 'Status']);
+          setSelectedColumn('Drawing Name');
+        }
+      }
+      
+      if (result.files.length > 0) {
+        // Process the project files
+        const fileNames = result.files.map(file => file.name);
+        setUploadedFiles(fileNames);
+          // Auto-trigger comparison if we have both drawing list and files
+        if (drawingList.length > 0 || result.templateData) {
+          const drawings = result.templateData ? 
+            (result.templateData as string[][])
+              .slice(1)
+              .map(row => row[0])
+              .filter(name => typeof name === 'string' && name.trim() !== '') :
+            drawingList;
+          
+          // Start timing
+          const startTime = performance.now();
+          setComparisonStartTime(startTime);
+          
+          const compResult = compare(drawings, fileNames);
+          
+          // End timing and calculate duration
+          const endTime = performance.now();
+          const duration = (endTime - startTime) / 1000; // Convert to seconds
+          setComparisonDuration(duration);
+          
+          setComparisonResult(compResult);
+          
+          // Scroll to results with a small delay to ensure the component is rendered
+          setTimeout(() => {
+            if (resultsRef.current) {
+              resultsRef.current.scrollIntoView({ behavior: 'smooth' });
+            }
+          }, 100);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading sample:', error);
+      setShowSampleLoader(true);
+    }
+  };
+    return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+      {/* Fixed Timing Badge */}
+      {comparisonResult && comparisonDuration !== null && (
+        <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top duration-500">
+          <Badge className="bg-green-600 text-white px-4 py-2 text-sm font-medium shadow-lg">
+            Generated in {comparisonDuration.toFixed(1)}s
+          </Badge>
+        </div>
+      )}
+      
       <Header />
       <main className="py-20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -311,8 +442,20 @@ const DeliverablesTracker = () => {
             >
               <Upload className="w-5 h-5 mr-2" />
               Start Tracking Deliverables
-            </Button>
-          </div>
+            </Button>          </div>          {/* Sample Loader */}
+          {showSampleLoader && !excelFile && (
+            <div className="mb-8">
+              <SampleLoadBox
+                onLoadSample={handleLoadSample}
+                isLoading={isLoading}
+                loadingProgress={loadingProgress}
+                loadingStatus="Loading sample deliverables..."
+                title="Load Sample Deliverables Project"
+                description="Try our demo with a sample deliverables list and project files including matched, missing, and extra files"
+                sampleButtonText="Load Sample Project"
+              />
+            </div>
+          )}
 
           {/* Step Progress Indicator */}
           <StepIndicator currentStep={currentStep} />{/* Compact Steps Layout - Horizontal Grid */}
@@ -544,7 +687,7 @@ const DeliverablesTracker = () => {
             </div>
           )}          {/* Results Section with Unified Table */}
           {comparisonResult && (
-            <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <div ref={resultsRef} className="bg-white rounded-xl shadow-lg p-6 mb-8">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-semibold text-gray-800">
                   Detailed Results
@@ -571,7 +714,7 @@ const DeliverablesTracker = () => {
                       <SelectItem value="extra">Extra Files</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button onClick={exportResults} variant="outline" className="flex items-center">
+                  <Button onClick={handleDownloadRequest} variant="outline" className="flex items-center">
                     <Download className="w-4 h-4 mr-2" />
                     Export Results
                   </Button>
@@ -727,9 +870,17 @@ const DeliverablesTracker = () => {
               Get Started Today
             </Button>
           </div>
-        </div>
-      </main>
+        </div>      </main>
       <Footer />
+      
+      {/* Download Modal */}
+      <DownloadModal
+        isOpen={showDownloadModal}
+        onClose={() => setShowDownloadModal(false)}
+        onDownload={handleExportResults}
+        title="Download Deliverables Comparison Results"
+        description="Enter your email address to download the comparison results as a CSV file. We'll send you a quick verification email first."
+      />
     </div>
   );
 };
