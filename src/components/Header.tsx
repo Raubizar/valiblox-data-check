@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useFakeAuth } from "@/hooks/useFakeAuth";
 
 export const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { isFakeLoggedIn, toggleFakeAuth } = useFakeAuth();
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
@@ -30,18 +32,29 @@ export const Header = () => {
             <Link to="/drawinglist-demo" className="text-gray-600 hover:text-gray-900 transition-colors">
               Deliverables Tracker
             </Link>
-          </nav>
-
-          {/* Sign In Button and Dashboard Link */}
+          </nav>          {/* Sign In Button and Dashboard Link */}
           <div className="hidden md:flex items-center space-x-4">
             <Link to="/dashboard">
               <Button variant="ghost" className="text-gray-600 hover:text-gray-900">
                 Dashboard
               </Button>
-            </Link>
-            <Button variant="outline" className="border-gray-300">
-              Sign In
-            </Button>
+            </Link>            {isFakeLoggedIn ? (
+              <Button 
+                variant="outline" 
+                className="border-gray-300"
+                onClick={toggleFakeAuth}
+              >
+                Sign Out
+              </Button>
+            ) : (
+              <Button 
+                variant="outline" 
+                className="border-gray-300"
+                onClick={toggleFakeAuth}
+              >
+                Sign In
+              </Button>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -63,13 +76,25 @@ export const Header = () => {
               </Link>
               <Link to="/drawinglist-demo" className="block text-gray-600 hover:text-gray-900 py-2">
                 Deliverables Tracker
-              </Link>
-              <Link to="/dashboard" className="block text-gray-600 hover:text-gray-900 py-2">
+              </Link>              <Link to="/dashboard" className="block text-gray-600 hover:text-gray-900 py-2">
                 Dashboard
-              </Link>
-              <Button variant="outline" className="w-full mt-4">
-                Sign In
-              </Button>
+              </Link>              {isFakeLoggedIn ? (
+                <Button 
+                  variant="outline" 
+                  className="w-full mt-4"
+                  onClick={toggleFakeAuth}
+                >
+                  Sign Out
+                </Button>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  className="w-full mt-4"
+                  onClick={toggleFakeAuth}
+                >
+                  Sign In
+                </Button>
+              )}
             </div>
           </div>
         )}

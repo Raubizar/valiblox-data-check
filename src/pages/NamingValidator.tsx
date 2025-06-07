@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Upload, CheckCircle, Loader2, FolderOpen } from "lucide-react";
 import { DownloadModal } from "@/components/DownloadModal";
 import { useAuth } from "@/hooks/useAuth";
+import { useFakeAuth } from "@/hooks/useFakeAuth";
 
 const STEPS = [
   { id: 1, title: 'Upload Template', description: 'Select your naming standard template' },
@@ -90,10 +91,10 @@ const NamingValidator = () => {
   const [validationStartTime, setValidationStartTime] = useState<number | null>(null);
   const [validationDuration, setValidationDuration] = useState<number | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
-  
-  // Download modal state
+    // Download modal state
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const { isAuthenticated } = useAuth();
+  const { isFakeLoggedIn } = useFakeAuth();
 
   // Calculate current step
   const currentStep = validationComplete ? 4 : filesSelected ? 3 : templateUploaded ? 2 : 1;
@@ -323,13 +324,15 @@ const NamingValidator = () => {
                 <Upload className="w-5 h-5 mr-2" />
                 Start Validating Files
               </Button>            )}
-          </div>
-
-          {/* Compact Project Selection */}
-          <CompactProjectSelector
-            selectedProject={selectedProject}
-            onProjectSelect={setSelectedProject}
-          />
+          </div>          {/* Compact Project Selection - Only visible when logged in */}
+          {isFakeLoggedIn && (
+            <div className="flex justify-center mb-8">
+              <CompactProjectSelector
+                selectedProject={selectedProject}
+                onProjectSelect={setSelectedProject}
+              />
+            </div>
+          )}
 
           {/* Step Progress Indicator */}
           <StepIndicator currentStep={currentStep} />
@@ -346,8 +349,8 @@ const NamingValidator = () => {
                 complianceData={complianceData}
                 validationResults={validationResults}
                 onDownloadRequest={handleDownloadRequest}
-                onSaveToProject={handleSaveToProject}
-                selectedProject={selectedProject}
+                onSaveToProject={isFakeLoggedIn ? handleSaveToProject : undefined}
+                selectedProject={isFakeLoggedIn ? selectedProject : undefined}
                 isSaving={isSaving}
               />
             </div>

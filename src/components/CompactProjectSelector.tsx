@@ -72,9 +72,8 @@ export const CompactProjectSelector = ({ selectedProject, onProjectSelect }: Com
       onProjectSelect(project || null);
     }
   };
-
   return (
-    <Card className="w-full mb-6 bg-blue-50 border-blue-200">
+    <Card className="w-full max-w-md bg-blue-50 border-blue-200">
       <CardContent className="pt-4 pb-4">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2 flex-shrink-0">

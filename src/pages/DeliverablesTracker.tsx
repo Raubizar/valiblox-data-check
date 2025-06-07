@@ -15,8 +15,6 @@ import { SampleLoadBox } from "@/components/SampleLoadBox";
 import { useSampleLoader } from "@/hooks/useSampleLoader";
 import { DownloadModal } from "@/components/DownloadModal";
 import { useAuth } from "@/hooks/useAuth";
-import { ProjectService } from "@/lib/projectService";
-import type { Project } from "@/types/database";
 
 const STEPS = [
   { id: 1, title: 'Upload Excel', description: 'Select your deliverables list' },
@@ -74,16 +72,13 @@ const DeliverablesTracker = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'matched' | 'missing' | 'extra'>('all');
   const [includeSubfolders, setIncludeSubfolders] = useState<boolean>(true);
-    // Sample loader state
+  // Sample loader state
   const [showSampleLoader, setShowSampleLoader] = useState<boolean>(true);
   const { loadSampleZip, isLoading, loadingProgress } = useSampleLoader();
-    // Auth and download modal state
+  
+  // Auth and download modal state
   const { user, isAuthenticated } = useAuth();
   const [showDownloadModal, setShowDownloadModal] = useState(false);
-  
-  // Project management state
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   
   // Timing and scroll state
   const [comparisonStartTime, setComparisonStartTime] = useState<number | null>(null);
@@ -188,65 +183,7 @@ const DeliverablesTracker = () => {
         'File Name': item,
         Notes: 'File not in deliverables list'
       }))
-    ];
-      exportToCSV(exportData, `deliverables-comparison-${new Date().toISOString().split('T')[0]}.csv`);
-  };
-
-  // Handle save to project
-  const handleSaveToProject = async () => {
-    if (!comparisonResult || !selectedProject) return;
-
-    try {
-      setIsSaving(true);
-
-      // Save drawing list if we have one
-      let drawingListId: string | undefined;
-      if (excelFile) {
-        const savedDrawingList = await ProjectService.saveDrawingList(
-          excelFile,
-          selectedProject.id,
-          selectedSheet,
-          selectedColumn,
-          drawingList.length,
-          `Deliverables List - ${new Date().toISOString().split('T')[0]}`
-        );
-        drawingListId = savedDrawingList.id;
-      }
-
-      // Create summary statistics
-      const summary = {
-        totalItems: comparisonResult.matched.length + comparisonResult.unmatchedInList.length,
-        matchedCount: comparisonResult.matched.length,
-        missingCount: comparisonResult.unmatchedInList.length,
-        extraCount: comparisonResult.unmatchedInFiles.length,
-        completionPercentage: comparisonResult.percentageFound,
-        processingTime: comparisonDuration
-      };
-
-      // Save the report
-      await ProjectService.saveReport({
-        project_id: selectedProject.id,
-        drawing_list_id: drawingListId,
-        naming_standard_id: undefined,
-        report_type: 'deliverables',
-        title: `Deliverables Report - ${new Date().toLocaleDateString()}`,
-        results: {
-          matched: comparisonResult.matched,
-          unmatchedInList: comparisonResult.unmatchedInList,
-          unmatchedInFiles: comparisonResult.unmatchedInFiles,
-          percentageFound: comparisonResult.percentageFound
-        },
-        summary
-      });
-
-      // Show success message (you can replace this with a toast notification)
-      alert(`Report saved to project "${selectedProject.name}" successfully!`);
-    } catch (error) {
-      console.error('Error saving to project:', error);
-      alert('Failed to save report. Please try again.');
-    } finally {
-      setIsSaving(false);
-    }
+    ];      exportToCSV(exportData, `deliverables-comparison-${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   // Handle Excel file upload

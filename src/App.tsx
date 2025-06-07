@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { FakeAuthProvider } from "@/hooks/useFakeAuth";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import NamingValidator from "./pages/NamingValidator";
@@ -21,10 +22,11 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
+    <FakeAuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/naming-validator" element={<NamingValidator />} />
@@ -39,11 +41,11 @@ const App = () => (
           {isFeatureEnabled('articlesPage') && <Route path="/articles" element={<Articles />} />}
           {isFeatureEnabled('pricingPage') && <Route path="/pricing" element={<Pricing />} />}
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+          <Route path="*" element={<NotFound />} />        </Routes>
       </BrowserRouter>
     </TooltipProvider>
-  </QueryClientProvider>
+  </FakeAuthProvider>
+</QueryClientProvider>
 );
 
 export default App;
