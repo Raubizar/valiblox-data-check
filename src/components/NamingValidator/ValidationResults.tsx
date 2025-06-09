@@ -1,12 +1,11 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Download, Filter, ArrowUpDown, Search, Save, Loader2 } from "lucide-react";
+import { CheckCircle, Download, Filter, ArrowUpDown, Search, Save, Loader2, FileText } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ProgressDots } from "@/components/ProgressDots";
+import { generateNamingValidationPDF } from "@/lib/pdfGenerator";
 import type { Project } from "@/types/database";
 
 interface ValidationResult {
@@ -134,241 +133,230 @@ export const ValidationResults = ({
     // Trigger download
     link.click();
     document.body.removeChild(link);
+  };  
+  const handlePDFExport = async () => {
+    try {
+      await generateNamingValidationPDF(complianceData, filteredAndSortedResults);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      // You could add a toast notification here
+    }
   };
-  
-  return (
-    <div className="mb-16">
-      {/* Compliance Summary */}
-      <Card className="mb-8 border-2 border-green-200 bg-green-50">
-        <CardHeader className="text-center">
-          <CardTitle className="text-3xl text-green-800">Validation Complete</CardTitle>
-          <CardDescription className="text-green-600 text-lg">
-            Your files have been successfully validated
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-2 gap-8 mb-8">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-700 font-medium">Total Files Verified:</span>
-                <span className="font-bold text-green-600 text-xl">{complianceData.totalFiles}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-700 font-medium">Names Comply:</span>
-                <span className="font-bold text-green-600 text-xl">{complianceData.compliantFiles}</span>
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-700 font-medium">Compliance Rate:</span>
-                <span className="font-bold text-green-600 text-xl">{complianceData.compliancePercentage}%</span>
-              </div>              <div className="flex space-x-1">
-                {Array.from({ length: 10 }, (_, i) => {
-                  // Calculate if this box should be filled
-                  const threshold = (i + 1) * 10; // 10%, 20%, etc.
-                  let colorClass = '';
-                  
-                  if (complianceData.compliancePercentage >= threshold) {
-                    colorClass = 'bg-green-500'; // Fully filled
-                  } else if (complianceData.compliancePercentage > (threshold - 10) && 
-                            complianceData.compliancePercentage < threshold) {
-                    colorClass = 'bg-yellow-500'; // Partially filled
-                  } else {
-                    colorClass = 'bg-red-200'; // Empty
-                  }
-                  
-                  return (
-                    <div 
-                      key={i} 
-                      className={`w-8 h-4 rounded-sm ${colorClass}`}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          </div>          <Progress value={complianceData.compliancePercentage} className="h-4 mb-6" />
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              onClick={onDownloadRequest || exportToCSV}
-              className="bg-green-600 hover:bg-green-700 text-white px-8 py-3"
-            >
-              <Download className="w-5 h-5 mr-2" />
-              Export Detailed Report
-            </Button>
-            
-            {selectedProject && onSaveToProject && (
-              <Button 
-                onClick={onSaveToProject}
-                disabled={isSaving}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-5 h-5 mr-2" />
-                    Save to {selectedProject.name}
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Detailed Results Table */}      <Card className="border-2 border-gray-100">
-        <CardHeader>
-          <CardTitle className="text-2xl text-gray-900">Detailed Validation Results</CardTitle>
-          <CardDescription className="text-gray-600">
-            Complete breakdown of file naming compliance for your project
-          </CardDescription>
+  return (
+    <div className="mb-16">      {/* Summary Table */}
+      <div className="bg-white rounded-xl shadow-lg p-6 mb-8" data-pdf-summary>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2 flex items-center">
+          <CheckCircle className="w-5 h-5 mr-2" />
+          Naming Validation Summary
+        </h3>
+        <p className="text-sm text-gray-600 mb-4">
+          ({complianceData.totalFiles} files verified)
+        </p>
+        <div className="overflow-x-auto">          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b-2 border-gray-200">
+                <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
+                <th className="text-right py-3 px-4 font-semibold text-gray-700">Count</th>
+                <th className="text-right py-3 px-4 font-semibold text-gray-700">Percentage</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-700">Progress</th>
+              </tr>
+            </thead>
+            <tbody>              <tr className="border-b border-gray-100">
+                <td className="py-3 px-4 flex items-center">
+                  <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
+                  <span className="font-medium text-gray-900">Compliant</span>
+                </td>
+                <td className="py-3 px-4 text-right font-semibold text-green-600">
+                  {complianceData.compliantFiles}
+                </td>
+                <td className="py-3 px-4 text-right font-semibold text-green-600">
+                  {complianceData.compliancePercentage}%
+                </td>
+                <td className="py-3 px-4">
+                  <ProgressDots percentage={complianceData.compliancePercentage} />
+                </td>
+              </tr>
+              <tr className="border-b border-gray-100">
+                <td className="py-3 px-4 flex items-center">
+                  <div className="w-3 h-3 bg-red-500 rounded-full mr-3"></div>
+                  <span className="font-medium text-gray-900">Non-Compliant</span>
+                </td>
+                <td className="py-3 px-4 text-right font-semibold text-red-600">
+                  {complianceData.totalFiles - complianceData.compliantFiles}
+                </td>
+                <td className="py-3 px-4 text-right font-semibold text-red-600">
+                  {100 - complianceData.compliancePercentage}%
+                </td>
+                <td className="py-3 px-4">
+                  {/* No progress dots for Non-Compliant row */}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        {/* Action Buttons */}        <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
+          <Button 
+            onClick={onDownloadRequest || exportToCSV}
+            variant="outline"
+            className="flex items-center"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export to Excel
+          </Button>
           
-          {/* Filtering and search controls */}
-          <div className="flex flex-col md:flex-row gap-4 mt-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input 
-                placeholder="Search files or folders..." 
-                className="pl-8"
+          <Button 
+            onClick={handlePDFExport}
+            variant="outline"
+            className="flex items-center"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Export to PDF
+          </Button>
+          
+          {selectedProject && onSaveToProject && (
+            <Button 
+              onClick={onSaveToProject}
+              disabled={isSaving}
+              className="bg-green-600 hover:bg-green-700 text-white flex items-center"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save to {selectedProject.name}
+                </>
+              )}
+            </Button>
+          )}
+        </div>      </div>{/* Detailed Results Section */}
+      <div className="bg-white rounded-xl shadow-lg p-6 mb-8" data-pdf-details>
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-lg font-semibold text-gray-800">
+            Detailed Validation Results
+          </h3>
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Search files or folders..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 w-64"
               />
             </div>
-            
-            <div className="flex gap-2">
-              <div className="flex items-center">
-                <Filter className="mr-2 h-4 w-4 text-gray-500" />
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Files</SelectItem>
-                    <SelectItem value="Ok">Compliant</SelectItem>
-                    <SelectItem value="Wrong">Non-Compliant</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="flex items-center">
-                <ArrowUpDown className="mr-2 h-4 w-4 text-gray-500" />
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="folder">Folder</SelectItem>
-                    <SelectItem value="filename">Filename</SelectItem>
-                    <SelectItem value="status">Status</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSortDirection(sortDirection === "asc" ? "desc" : "asc")}
-                className="flex items-center"
-              >
-                {sortDirection === "asc" ? "↑ Asc" : "↓ Desc"}
-              </Button>
-            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40">
+                <Filter className="w-4 h-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Files</SelectItem>
+                <SelectItem value="Ok">Compliant</SelectItem>
+                <SelectItem value="Wrong">Non-Compliant</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-40">
+                <ArrowUpDown className="w-4 h-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="folder">Folder</SelectItem>
+                <SelectItem value="filename">Filename</SelectItem>
+                <SelectItem value="status">Status</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSortDirection(sortDirection === "asc" ? "desc" : "asc")}
+              className="flex items-center"
+            >
+              {sortDirection === "asc" ? "↑ Asc" : "↓ Desc"}
+            </Button>
           </div>
-          
-          {/* Results count */}
-          <div className="text-sm text-gray-500 mt-2">
-            Showing {filteredAndSortedResults.length} of {validationResults.length} files
-            {statusFilter !== "all" && ` (filtered by ${statusFilter === "Ok" ? "Compliant" : "Non-Compliant"})`}
-            {searchTerm && ` (search: "${searchTerm}")`}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-900 hover:bg-gray-900">
-                  <TableHead 
-                    className="text-white font-semibold cursor-pointer"
-                    onClick={() => toggleSort("folder")}
-                  >
-                    <div className="flex items-center">
-                      Folder Path
-                      {sortBy === "folder" && (
-                        <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>
-                      )}
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="text-white font-semibold cursor-pointer"
-                    onClick={() => toggleSort("filename")}
-                  >
-                    <div className="flex items-center">
-                      File Name
-                      {sortBy === "filename" && (
-                        <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>
-                      )}
-                    </div>
-                  </TableHead>
-                  <TableHead 
-                    className="text-white font-semibold cursor-pointer"
-                    onClick={() => toggleSort("status")}
-                  >
-                    <div className="flex items-center">
-                      Status
-                      {sortBy === "status" && (
-                        <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>
-                      )}
-                    </div>
-                  </TableHead>
-                  <TableHead className="text-white font-semibold">Details</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+        </div>
+
+        {/* Results Table */}
+        <div className="border rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 table-fixed">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="w-1/4 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Folder Path
+                  </th>
+                  <th className="w-1/4 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    File Name
+                  </th>
+                  <th className="w-1/6 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="w-5/12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Details
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
                 {filteredAndSortedResults.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                  <tr>
+                    <td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">
                       No results match your current filters. Try adjusting your search or filter criteria.
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 ) : (
                   filteredAndSortedResults.map((result, index) => (
-                    <TableRow key={index} className={`hover:bg-gray-50 ${index > 0 && result.folderPath === filteredAndSortedResults[index-1]?.folderPath ? 'border-t-0' : ''}`}>
-                      <TableCell className="font-medium text-gray-900">
-                        {/* Only show folder path if it's different from the previous row */}
-                        {index === 0 || result.folderPath !== filteredAndSortedResults[index-1]?.folderPath ? (
-                          <div className="bg-gray-100 px-3 py-1 rounded font-medium -ml-2">{result.folderPath}</div>
-                        ) : ''}
-                      </TableCell>
-                      <TableCell className="max-w-md">
-                        <div className="truncate text-gray-700" title={result.fileName}>
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm text-gray-900 break-words">
+                        <div className="break-all">
+                          {result.folderPath}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 break-words">
+                        <div className="break-all">
                           {result.fileName}
                         </div>
-                      </TableCell>
-                      <TableCell>
+                      </td>
+                      <td className="px-6 py-4">
                         <Badge 
-                          variant={result.status === 'Ok' ? 'default' : 'destructive'}
-                          className={result.status === 'Ok' ? 'bg-green-100 text-green-800 hover:bg-green-100 border-green-200' : 'bg-red-100 text-red-800 hover:bg-red-100 border-red-200'}
+                          className={result.status === 'Ok' ? 
+                            'bg-green-100 text-green-800 border-green-200' : 
+                            'bg-red-100 text-red-800 border-red-200'
+                          }
                         >
                           {result.status === 'Ok' ? 
-                            <CheckCircle className="w-4 h-4 mr-1" /> : 
-                            <span className="mr-1">⚠️</span>
+                            <CheckCircle className="w-3 h-3 mr-1" /> : 
+                            '⚠️'
                           }
                           {result.status}
                         </Badge>
-                      </TableCell>                    <TableCell className="text-gray-600">
-                      <span dangerouslySetInnerHTML={{ __html: result.details.replace(/Parts not compliant:/g, '<span class="text-red-500 font-medium">Parts not compliant:</span>') }} />
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        <span dangerouslySetInnerHTML={{ 
+                          __html: result.details.replace(/Parts not compliant:/g, '<span class="text-red-500 font-medium">Parts not compliant:</span>') 
+                        }} />
+                      </td>
+                    </tr>
+                  ))
                 )}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Results Summary */}
+        <div className="mt-4 text-sm text-gray-600">
+          Showing {filteredAndSortedResults.length} of {validationResults.length} total results
+          {statusFilter !== "all" && ` (filtered by ${statusFilter === "Ok" ? "Compliant" : "Non-Compliant"})`}
+          {searchTerm && ` (search: "${searchTerm}")`}
+        </div>
+      </div>
     </div>
   );
 };

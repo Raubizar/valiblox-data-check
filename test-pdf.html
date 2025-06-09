@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Generation Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <h1>PDF Generation Test</h1>
+    <button id="testPdf">Generate Test PDF</button>
+    <div id="status"></div>
+
+    <script>
+        // Simple test data
+        const mockComparisonResult = {
+            matched: [
+                { name: 'ABC-DEF-001-001.dwg', project: 'ABC', building: 'DEF', level: '001', sequence: '001', discipline: 'Architectural' },
+                { name: 'ABC-DEF-002-001.pdf', project: 'ABC', building: 'DEF', level: '002', sequence: '001', discipline: 'Structural' }
+            ],
+            unmatchedInList: [
+                { name: 'XYZ-GHI-001-REV01.xlsx', reason: 'Invalid naming convention' }
+            ],
+            unmatchedInFiles: []
+        };
+
+        const mockUnifiedResults = [
+            { fileName: 'ABC-DEF-001-001.dwg', status: 'Valid', project: 'ABC', building: 'DEF', level: '001', sequence: '001', discipline: 'Architectural' },
+            { fileName: 'ABC-DEF-002-001.pdf', status: 'Valid', project: 'ABC', building: 'DEF', level: '002', sequence: '001', discipline: 'Structural' },
+            { fileName: 'XYZ-GHI-001-REV01.xlsx', status: 'Invalid', reason: 'Invalid naming convention' }
+        ];
+
+        // Load image as data URL helper
+        const loadImageAsDataUrl = async (imagePath) => {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx?.drawImage(img, 0, 0);
+                    resolve(canvas.toDataURL('image/png'));
+                };
+                img.onerror = reject;
+                img.src = imagePath;
+            });
+        };
+
+        // Format date and time helper
+        const formatDateTime = () => {
+            const now = new Date();
+            const date = now.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            const time = now.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+            return { date, time };
+        };
+
+        // Test PDF generation
+        async function generateTestPDF() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = 'Generating PDF...';
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+
+                // Load the icon logo
+                let iconDataUrl = null;
+                try {
+                    iconDataUrl = await loadImageAsDataUrl('/Valiblox_v3.1-icon-removebg-preview.png');
+                    statusDiv.innerHTML = 'Logo loaded successfully. Generating PDF...';
+                } catch (error) {
+                    console.warn('Could not load icon logo, continuing without it');
+                    statusDiv.innerHTML = 'Logo load failed, continuing without it...';
+                }
+
+                // Add watermark function
+                const addWatermark = () => {
+                    if (iconDataUrl) {
+                        pdf.saveGraphicsState();
+                        pdf.setGState(pdf.GState({ opacity: 0.04 }));
+                        
+                        const watermarkSize = 40;
+                        const spacing = 120;
+                        
+                        for (let x = 40; x < pageWidth - 40; x += spacing) {
+                            for (let y = 100; y < pageHeight - 100; y += spacing) {
+                                try {
+                                    pdf.addImage(iconDataUrl, 'PNG', x, y, watermarkSize, watermarkSize * 0.25);
+                                    
+                                    pdf.setTextColor(120, 120, 120);
+                                    pdf.setFontSize(8);
+                                    pdf.setFont('helvetica', 'bold');
+                                    const text = 'VALIBLOX';
+                                    const textWidth = pdf.getTextWidth(text);
+                                    pdf.text(text, x + (watermarkSize - textWidth) / 2, y + watermarkSize * 0.25 + 8);
+                                } catch (e) {
+                                    console.warn('Error adding watermark element:', e);
+                                }
+                            }
+                        }
+                        
+                        pdf.restoreGraphicsState();
+                    }
+                };
+
+                // Add header function
+                const addHeader = (title, subtitle) => {
+                    addWatermark();
+                    
+                    if (iconDataUrl) {
+                        const iconSize = 25;
+                        const valibloxText = 'VALIBLOX';
+                        pdf.setFontSize(18);
+                        pdf.setFont('helvetica', 'bold');
+                        const textWidth = pdf.getTextWidth(valibloxText);
+                        const totalWidth = iconSize + 5 + textWidth;
+                        const startX = (pageWidth - totalWidth) / 2;
+                        
+                        try {
+                            pdf.addImage(iconDataUrl, 'PNG', startX, 15, iconSize, iconSize);
+                        } catch (e) {
+                            console.warn('Error adding header logo:', e);
+                        }
+                        
+                        pdf.setTextColor(0, 0, 0);
+                        pdf.text(valibloxText, startX + iconSize + 5, 32);
+                    }
+                    
+                    pdf.setFontSize(24);
+                    pdf.setFont('helvetica', 'bold');
+                    pdf.setTextColor(0, 0, 0);
+                    const titleWidth = pdf.getTextWidth(title);
+                    pdf.text(title, (pageWidth - titleWidth) / 2, 50);
+                    
+                    pdf.setFontSize(12);
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.setTextColor(100, 100, 100);
+                    const subtitleWidth = pdf.getTextWidth(subtitle);
+                    pdf.text(subtitle, (pageWidth - subtitleWidth) / 2, 60);
+                    
+                    const { date, time } = formatDateTime();
+                    const dateText = `Generated on: ${date} at ${time}`;
+                    pdf.setFontSize(10);
+                    pdf.setTextColor(100, 100, 100);
+                    const dateWidth = pdf.getTextWidth(dateText);
+                    pdf.text(dateText, (pageWidth - dateWidth) / 2, 70);
+                    
+                    pdf.setLineWidth(0.5);
+                    pdf.setDrawColor(150, 150, 150);
+                    pdf.line(20, 77, pageWidth - 20, 77);
+                };
+
+                // Add footer function
+                const addFooter = (pageNumber, totalPages) => {
+                    const footerY = pageHeight - 15;
+                    
+                    pdf.setFontSize(8);
+                    pdf.setTextColor(100, 100, 100);
+                    pdf.setFont('helvetica', 'normal');
+                    
+                    const leftText = 'Generated by VALIBLOX';
+                    pdf.text(leftText, 20, footerY);
+                    
+                    const centerText = 'www.valiblox.com | info@valiblox.com';
+                    const centerWidth = pdf.getTextWidth(centerText);
+                    pdf.text(centerText, (pageWidth - centerWidth) / 2, footerY);
+                    
+                    const { date } = formatDateTime();
+                    const rightText = `${date} - Page ${pageNumber} of 1`;
+                    const rightWidth = pdf.getTextWidth(rightText);
+                    pdf.text(rightText, pageWidth - 20 - rightWidth, footerY);
+                };
+
+                // Generate content
+                const totalFiles = mockComparisonResult.matched.length + mockComparisonResult.unmatchedInList.length;
+                addHeader('Deliverables Tracker Report', `${totalFiles} files verified`);
+                
+                // Add summary
+                let currentY = 90;
+                pdf.setFontSize(16);
+                pdf.setFont('helvetica', 'bold');
+                pdf.setTextColor(0, 0, 0);
+                pdf.text('Summary', 20, currentY);
+                
+                currentY += 15;
+                pdf.setFontSize(11);
+                pdf.setFont('helvetica', 'normal');
+                pdf.text(`Total Files Processed: ${totalFiles}`, 20, currentY);
+                currentY += 8;
+                pdf.text(`Files Matched: ${mockComparisonResult.matched.length}`, 20, currentY);
+                currentY += 8;
+                pdf.text(`Files Not Matched: ${mockComparisonResult.unmatchedInList.length}`, 20, currentY);
+
+                // Add matched files section
+                currentY += 20;
+                pdf.setFontSize(14);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('Matched Files', 20, currentY);
+                
+                currentY += 10;
+                mockComparisonResult.matched.forEach((file, index) => {
+                    pdf.setFontSize(10);
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.text(`${index + 1}. ${file.name}`, 25, currentY);
+                    currentY += 6;
+                    pdf.setTextColor(100, 100, 100);
+                    pdf.text(`   Project: ${file.project}, Building: ${file.building}, Level: ${file.level}`, 25, currentY);
+                    currentY += 8;
+                    pdf.setTextColor(0, 0, 0);
+                });
+
+                addFooter(1, 1);
+
+                // Save PDF
+                pdf.save('valiblox-deliverables-test.pdf');
+                statusDiv.innerHTML = 'PDF generated successfully!';
+
+            } catch (error) {
+                console.error('Error generating PDF:', error);
+                statusDiv.innerHTML = `Error: ${error.message}`;
+            }
+        }
+
+        document.getElementById('testPdf').addEventListener('click', generateTestPDF);
+    </script>
+</body>
+</html>

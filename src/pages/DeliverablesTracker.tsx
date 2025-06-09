@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { BarChart3, Upload, FileCheck, AlertTriangle, Download, FolderOpen, FileSpreadsheet, Search, Filter, CheckCircle } from "lucide-react";
+import { BarChart3, Upload, FileCheck, AlertTriangle, Download, FolderOpen, FileSpreadsheet, Search, Filter, CheckCircle, FileText } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,9 @@ import { supportsFileSystemAccessAPI } from "@/lib/utils";
 import { SampleLoadBox } from "@/components/SampleLoadBox";
 import { useSampleLoader } from "@/hooks/useSampleLoader";
 import { DownloadModal } from "@/components/DownloadModal";
+import { ProgressDots } from "@/components/ProgressDots";
 import { useAuth } from "@/hooks/useAuth";
+import { generateDeliverablesTrackerPDF } from "@/lib/pdfGenerator";
 
 const STEPS = [
   { id: 1, title: 'Upload Excel', description: 'Select your deliverables list' },
@@ -71,7 +73,7 @@ const DeliverablesTracker = () => {
   const [isProcessing, setIsProcessing] = useState(false);  const [currentWorkbook, setCurrentWorkbook] = useState<XLSX.WorkBook | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'matched' | 'missing' | 'extra'>('all');
-  const [includeSubfolders, setIncludeSubfolders] = useState<boolean>(true);
+  const [includeSubfolders, setIncludeSubfolders] = useState<boolean>(false);
   // Sample loader state
   const [showSampleLoader, setShowSampleLoader] = useState<boolean>(true);
   const { loadSampleZip, isLoading, loadingProgress } = useSampleLoader();
@@ -152,12 +154,21 @@ const DeliverablesTracker = () => {
     a.download = filename;
     a.click();
     window.URL.revokeObjectURL(url);
-  };
-  const handleDownloadRequest = () => {
+  };  const handleDownloadRequest = () => {
     if (isAuthenticated) {
       handleExportResults();
     } else {
       setShowDownloadModal(true);
+    }  };
+
+  const handlePDFExport = async () => {
+    if (!comparisonResult) return;
+    
+    try {
+      await generateDeliverablesTrackerPDF(comparisonResult, unifiedResults);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      // You could add a toast notification here
     }
   };
 
@@ -650,22 +661,22 @@ const DeliverablesTracker = () => {
                 )}
               </div>
             )}
-          </div>
-
-          {/* Summary Table */}
-          {comparisonResult && (
-            <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+          </div>          {/* Summary Table */}
+          {comparisonResult && (            <div className="bg-white rounded-xl shadow-lg p-6 mb-8" data-pdf-summary>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2 flex items-center">
                 <BarChart3 className="w-5 h-5 mr-2" />
                 Deliverables Summary
               </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
+              <p className="text-sm text-gray-600 mb-4">
+                ({comparisonResult.matched.length + comparisonResult.unmatchedInList.length} files verified)
+              </p>
+              <div className="overflow-x-auto">                <table className="w-full border-collapse">
                   <thead>
                     <tr className="border-b-2 border-gray-200">
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
                       <th className="text-right py-3 px-4 font-semibold text-gray-700">Count</th>
                       <th className="text-right py-3 px-4 font-semibold text-gray-700">Percentage</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Progress</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -680,6 +691,11 @@ const DeliverablesTracker = () => {
                       <td className="py-3 px-4 text-right font-semibold text-green-600">
                         {Math.round((comparisonResult.matched.length / (comparisonResult.matched.length + comparisonResult.unmatchedInList.length)) * 100)}%
                       </td>
+                      <td className="py-3 px-4">
+                        <ProgressDots 
+                          percentage={Math.round((comparisonResult.matched.length / (comparisonResult.matched.length + comparisonResult.unmatchedInList.length)) * 100)} 
+                        />
+                      </td>
                     </tr>
                     <tr className="border-b border-gray-100">
                       <td className="py-3 px-4 flex items-center">
@@ -691,6 +707,9 @@ const DeliverablesTracker = () => {
                       </td>
                       <td className="py-3 px-4 text-right font-semibold text-red-600">
                         {Math.round((comparisonResult.unmatchedInList.length / (comparisonResult.matched.length + comparisonResult.unmatchedInList.length)) * 100)}%
+                      </td>
+                      <td className="py-3 px-4">
+                        {/* No progress dots for Missing row */}
                       </td>
                     </tr>
                     <tr className="border-b border-gray-100">
@@ -704,22 +723,16 @@ const DeliverablesTracker = () => {
                         {comparisonResult.unmatchedInFiles.length > 0 ? 
                           Math.round((comparisonResult.unmatchedInFiles.length / (comparisonResult.matched.length + comparisonResult.unmatchedInList.length + comparisonResult.unmatchedInFiles.length)) * 100) : 0}%
                       </td>
-                    </tr>                    <tr className="border-t-2 border-gray-200 bg-gray-50">
-                      <td className="py-3 px-4 font-semibold text-gray-900">Files Verified</td>
-                      <td className="py-3 px-4 text-right font-bold text-gray-900">
-                        {comparisonResult.matched.length + comparisonResult.unmatchedInList.length}
-                      </td>
-                      <td className="py-3 px-4 text-right font-bold text-blue-600">
-                        {Math.round(comparisonResult.percentageFound)}% Complete
+                      <td className="py-3 px-4">
+                        {/* No progress dots for Extra row */}
                       </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}          {/* Results Section with Unified Table */}
+            </div>          )}          {/* Results Section with Unified Table */}
           {comparisonResult && (
-            <div ref={resultsRef} className="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <div ref={resultsRef} className="bg-white rounded-xl shadow-lg p-6 mb-8" data-pdf-details>
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-lg font-semibold text-gray-800">
                   Detailed Results
@@ -747,7 +760,11 @@ const DeliverablesTracker = () => {
                     </SelectContent>
                   </Select>                  <Button onClick={handleDownloadRequest} variant="outline" className="flex items-center">
                     <Download className="w-4 h-4 mr-2" />
-                    Export Results
+                    Export to Excel
+                  </Button>
+                  <Button onClick={handlePDFExport} variant="outline" className="flex items-center">
+                    <FileText className="w-4 h-4 mr-2" />
+                    Export to PDF
                   </Button>
                 </div>
               </div>

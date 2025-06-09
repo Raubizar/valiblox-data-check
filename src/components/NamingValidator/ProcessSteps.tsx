@@ -2,6 +2,7 @@ import { useState, useRef, ChangeEvent, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, Download, Folder, File, AlertCircle } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { createTemplateFile } from "@/lib/naming";
@@ -21,6 +22,7 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
   const [templateFileName, setTemplateFileName] = useState<string>("");
   const [folderName, setFolderName] = useState<string>("");
   const [filesSelected, setFilesSelected] = useState<number>(0);
+  const [includeSubfolders, setIncludeSubfolders] = useState<boolean>(false);
   const [browserCompatible, setBrowserCompatible] = useState<boolean>(true);
   const [browserInfo, setBrowserInfo] = useState<{ name: string, version: string }>({ name: "", version: "" });
   const [showSampleLoader, setShowSampleLoader] = useState<boolean>(true);
@@ -28,7 +30,7 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   
-  const { loadSampleZip, isLoading, loadingProgress, loadingStatus } = useSampleLoader();  // Check browser compatibility on mount
+  const { loadSampleZip, isLoading, loadingProgress, loadingStatus } = useSampleLoader();// Check browser compatibility on mount
   useEffect(() => {
     const fsApiSupported = supportsFileSystemAccessAPI();
     const isModern = isModernBrowser();
@@ -90,8 +92,7 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
       // Use the File System Access API to select a folder
       const directoryHandle = await window.showDirectoryPicker();
       setFolderName(directoryHandle.name);
-      
-      // Collect files from the folder
+        // Collect files from the folder
       const files: File[] = [];
       const traverseDirectory = async (dirHandle: FileSystemDirectoryHandle, path = "") => {
         for await (const entry of dirHandle.values()) {
@@ -104,8 +105,8 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
               writable: false
             });
             files.push(file);
-          } else if (entry.kind === 'directory') {
-            // Recursively process subdirectories
+          } else if (entry.kind === 'directory' && includeSubfolders) {
+            // Recursively process subdirectories only if includeSubfolders is true
             const dirEntry = entry as FileSystemDirectoryHandle;
             await traverseDirectory(
               dirEntry, 
@@ -281,8 +282,7 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
             </div>
             
             <div className="space-y-4">
-              <p className="text-gray-600">Choose files or folders to validate against your naming convention.</p>
-              <div className="grid md:grid-cols-2 gap-4">
+              <p className="text-gray-600">Choose files or folders to validate against your naming convention.</p>              <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <input 
                     type="file" 
@@ -313,6 +313,17 @@ export const ProcessSteps = ({ onTemplateUpload, onFilesSelect, templateUploaded
                     Select Folder
                   </Button>
                 </div>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="include-subfolders"
+                  checked={includeSubfolders}
+                  onCheckedChange={(checked) => setIncludeSubfolders(checked as boolean)}
+                />
+                <label htmlFor="include-subfolders" className="text-sm text-gray-600 cursor-pointer">
+                  Include subfolders in search
+                </label>
               </div>
               
               {filesSelected > 0 && (
