@@ -14,7 +14,7 @@ import { supportsFileSystemAccessAPI } from "@/lib/utils";
 import { SampleLoadBox } from "@/components/SampleLoadBox";
 import { useSampleLoader } from "@/hooks/useSampleLoader";
 import { DownloadModal } from "@/components/DownloadModal";
-import { ProgressDots } from "@/components/ProgressDots";
+import SpeedometerChart from "@/components/SpeedometerChart";
 import { useAuth } from "@/hooks/useAuth";
 import { generateDeliverablesTrackerPDF } from "@/lib/pdfGenerator";
 
@@ -669,14 +669,13 @@ const DeliverablesTracker = () => {
               </h3>
               <p className="text-sm text-gray-600 mb-4">
                 ({comparisonResult.matched.length + comparisonResult.unmatchedInList.length} files verified)
-              </p>
-              <div className="overflow-x-auto">                <table className="w-full border-collapse">
+              </p>              <div className="overflow-x-auto">                <table className="w-full border-collapse">
                   <thead>
                     <tr className="border-b-2 border-gray-200">
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
                       <th className="text-right py-3 px-4 font-semibold text-gray-700">Count</th>
                       <th className="text-right py-3 px-4 font-semibold text-gray-700">Percentage</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Progress</th>
+                      <th className="text-center py-3 px-4 font-semibold text-gray-700">Match Rate</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -691,13 +690,16 @@ const DeliverablesTracker = () => {
                       <td className="py-3 px-4 text-right font-semibold text-green-600">
                         {Math.round((comparisonResult.matched.length / (comparisonResult.matched.length + comparisonResult.unmatchedInList.length)) * 100)}%
                       </td>
-                      <td className="py-3 px-4">
-                        <ProgressDots 
-                          percentage={Math.round((comparisonResult.matched.length / (comparisonResult.matched.length + comparisonResult.unmatchedInList.length)) * 100)} 
-                        />
+                      <td className="py-3 px-4" rowSpan={3}>
+                        <div className="flex justify-center">
+                          <SpeedometerChart 
+                            percentage={Math.round((comparisonResult.matched.length / (comparisonResult.matched.length + comparisonResult.unmatchedInList.length)) * 100)} 
+                            label="Match Rate"
+                            size={100}
+                          />
+                        </div>
                       </td>
-                    </tr>
-                    <tr className="border-b border-gray-100">
+                    </tr>                    <tr className="border-b border-gray-100">
                       <td className="py-3 px-4 flex items-center">
                         <div className="w-3 h-3 bg-red-500 rounded-full mr-3"></div>
                         <span className="font-medium text-gray-900">Missing</span>
@@ -707,9 +709,6 @@ const DeliverablesTracker = () => {
                       </td>
                       <td className="py-3 px-4 text-right font-semibold text-red-600">
                         {Math.round((comparisonResult.unmatchedInList.length / (comparisonResult.matched.length + comparisonResult.unmatchedInList.length)) * 100)}%
-                      </td>
-                      <td className="py-3 px-4">
-                        {/* No progress dots for Missing row */}
                       </td>
                     </tr>
                     <tr className="border-b border-gray-100">
@@ -722,9 +721,6 @@ const DeliverablesTracker = () => {
                       </td>                      <td className="py-3 px-4 text-right font-semibold text-yellow-600">
                         {comparisonResult.unmatchedInFiles.length > 0 ? 
                           Math.round((comparisonResult.unmatchedInFiles.length / (comparisonResult.matched.length + comparisonResult.unmatchedInList.length + comparisonResult.unmatchedInFiles.length)) * 100) : 0}%
-                      </td>
-                      <td className="py-3 px-4">
-                        {/* No progress dots for Extra row */}
                       </td>
                     </tr>
                   </tbody>

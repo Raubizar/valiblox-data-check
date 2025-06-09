@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle, Download, Filter, ArrowUpDown, Search, Save, Loader2, FileText } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ProgressDots } from "@/components/ProgressDots";
+import SpeedometerChart from "@/components/SpeedometerChart";
 import { generateNamingValidationPDF } from "@/lib/pdfGenerator";
 import type { Project } from "@/types/database";
 
@@ -152,14 +152,13 @@ export const ValidationResults = ({
         </h3>
         <p className="text-sm text-gray-600 mb-4">
           ({complianceData.totalFiles} files verified)
-        </p>
-        <div className="overflow-x-auto">          <table className="w-full border-collapse">
+        </p>        <div className="overflow-x-auto">          <table className="w-full border-collapse">
             <thead>
               <tr className="border-b-2 border-gray-200">
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
                 <th className="text-right py-3 px-4 font-semibold text-gray-700">Count</th>
                 <th className="text-right py-3 px-4 font-semibold text-gray-700">Percentage</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Progress</th>
+                <th className="text-center py-3 px-4 font-semibold text-gray-700">Compliance Rate</th>
               </tr>
             </thead>
             <tbody>              <tr className="border-b border-gray-100">
@@ -173,8 +172,14 @@ export const ValidationResults = ({
                 <td className="py-3 px-4 text-right font-semibold text-green-600">
                   {complianceData.compliancePercentage}%
                 </td>
-                <td className="py-3 px-4">
-                  <ProgressDots percentage={complianceData.compliancePercentage} />
+                <td className="py-3 px-4" rowSpan={2}>
+                  <div className="flex justify-center">
+                    <SpeedometerChart 
+                      percentage={complianceData.compliancePercentage} 
+                      label="Compliance Rate"
+                      size={100}
+                    />
+                  </div>
                 </td>
               </tr>
               <tr className="border-b border-gray-100">
@@ -187,9 +192,6 @@ export const ValidationResults = ({
                 </td>
                 <td className="py-3 px-4 text-right font-semibold text-red-600">
                   {100 - complianceData.compliancePercentage}%
-                </td>
-                <td className="py-3 px-4">
-                  {/* No progress dots for Non-Compliant row */}
                 </td>
               </tr>
             </tbody>
