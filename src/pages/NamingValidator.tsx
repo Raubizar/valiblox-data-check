@@ -327,10 +327,12 @@ const NamingValidator = () => {
           </div>          {/* Compact Project Selection - Only visible when logged in */}
           {isFakeLoggedIn && (
             <div className="flex justify-center mb-8">
-              <CompactProjectSelector
-                selectedProject={selectedProject}
-                onProjectSelect={setSelectedProject}
-              />
+              <div className="w-1/2">
+                <CompactProjectSelector
+                  selectedProject={selectedProject}
+                  onProjectSelect={setSelectedProject}
+                />
+              </div>
             </div>
           )}
 

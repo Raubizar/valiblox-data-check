@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { BarChart3, Upload, FileCheck, AlertTriangle, Download, FolderOpen, FileSpreadsheet, Search, Filter, CheckCircle, Loader2 } from "lucide-react";
+import { BarChart3, Upload, FileCheck, AlertTriangle, Download, FolderOpen, FileSpreadsheet, Search, Filter, CheckCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -749,25 +749,6 @@ const DeliverablesTracker = () => {
                     <Download className="w-4 h-4 mr-2" />
                     Export Results
                   </Button>
-                  {selectedProject && (
-                    <Button 
-                      onClick={handleSaveToProject} 
-                      disabled={isSaving}
-                      className="bg-green-600 hover:bg-green-700 text-white flex items-center"
-                    >
-                      {isSaving ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <FolderOpen className="w-4 h-4 mr-2" />
-                          Save to Project
-                        </>
-                      )}
-                    </Button>
-                  )}
                 </div>
               </div>
 
