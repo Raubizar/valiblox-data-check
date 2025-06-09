@@ -34,6 +34,149 @@ const loadImageAsDataUrl = async (imagePath: string): Promise<string> => {
   });
 };
 
+// Helper function to draw table row with web-like styling
+const drawTableRow = (
+  pdf: jsPDF, 
+  y: number, 
+  data: string[], 
+  colWidths: number[], 
+  startX: number, 
+  isHeader: boolean = false,
+  alternateBackground: boolean = false
+) => {
+  const rowHeight = 8;
+  const totalWidth = colWidths.reduce((a, b) => a + b, 0);
+  
+  // Add row background (like web table)
+  if (alternateBackground && !isHeader) {
+    pdf.setFillColor(249, 250, 251); // Light gray background
+    pdf.rect(startX, y - 6, totalWidth, rowHeight, 'F');
+  }
+  
+  // Add cell borders
+  let currentX = startX;
+  pdf.setDrawColor(229, 231, 235); // Light border color
+  pdf.setLineWidth(0.3);
+  
+  colWidths.forEach((width, index) => {
+    pdf.rect(currentX, y - 6, width, rowHeight, 'S');
+    currentX += width;
+  });
+  
+  return rowHeight;
+};
+
+// Helper function to draw detail table headers
+const drawDetailTableHeaders = (pdf: jsPDF, y: number, startX: number, detailColWidths: number[]) => {
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(0, 0, 0);
+  
+  // Draw header background
+  const totalWidth = detailColWidths.reduce((a, b) => a + b, 0);
+  pdf.setFillColor(249, 250, 251);
+  pdf.rect(startX, y - 6, totalWidth, 8, 'F');
+  
+  // Draw header borders
+  let currentX = startX;
+  pdf.setDrawColor(229, 231, 235);
+  pdf.setLineWidth(0.3);
+  
+  detailColWidths.forEach((width) => {
+    pdf.rect(currentX, y - 6, width, 8, 'S');
+    currentX += width;
+  });
+  
+  // Header text
+  pdf.text('Drawing Name', startX + 2, y);
+  pdf.text('File Name', startX + detailColWidths[0] + 2, y);
+  pdf.text('Status', startX + detailColWidths[0] + detailColWidths[1] + 2, y);
+  
+  return y + 8;
+};
+
+// Helper function to draw speedometer chart
+const drawSpeedometer = (pdf: jsPDF, x: number, y: number, percentage: number, label: string) => {
+  const radius = 15; // 30mm diameter = 15mm radius (smaller to fit better)
+  const centerX = x + radius;
+  const centerY = y + radius;
+  
+  // Save graphics state
+  pdf.saveGraphicsState();
+  
+  // Draw arc segments for color coding using line segments
+  const segments = 72; // Number of line segments to approximate arc (more for smoother curves)
+  const angleStep = Math.PI / segments; // 180° in segments
+  const arcThickness = 3;
+  
+  // Red zone (0-40%) - 0° to 72° (right side) - CORRECTED ORIENTATION
+  pdf.setDrawColor(220, 38, 127);
+  pdf.setLineWidth(arcThickness);
+  for (let i = 0; i < Math.floor(segments * 0.4); i++) {
+    const angle1 = (i * angleStep);
+    const angle2 = ((i + 1) * angleStep);
+    const x1 = centerX + Math.cos(angle1) * radius;
+    const y1 = centerY - Math.sin(angle1) * radius; // Negative Y for upward orientation
+    const x2 = centerX + Math.cos(angle2) * radius;
+    const y2 = centerY - Math.sin(angle2) * radius;
+    pdf.line(x1, y1, x2, y2);
+  }
+  
+  // Yellow zone (40-80%) - 72° to 144°
+  pdf.setDrawColor(234, 179, 8);
+  for (let i = Math.floor(segments * 0.4); i < Math.floor(segments * 0.8); i++) {
+    const angle1 = (i * angleStep);
+    const angle2 = ((i + 1) * angleStep);
+    const x1 = centerX + Math.cos(angle1) * radius;
+    const y1 = centerY - Math.sin(angle1) * radius;
+    const x2 = centerX + Math.cos(angle2) * radius;
+    const y2 = centerY - Math.sin(angle2) * radius;
+    pdf.line(x1, y1, x2, y2);
+  }
+  
+  // Green zone (80-100%) - 144° to 180° (left side)
+  pdf.setDrawColor(34, 197, 94);
+  for (let i = Math.floor(segments * 0.8); i < segments; i++) {
+    const angle1 = (i * angleStep);
+    const angle2 = ((i + 1) * angleStep);
+    const x1 = centerX + Math.cos(angle1) * radius;
+    const y1 = centerY - Math.sin(angle1) * radius;
+    const x2 = centerX + Math.cos(angle2) * radius;
+    const y2 = centerY - Math.sin(angle2) * radius;
+    pdf.line(x1, y1, x2, y2);
+  }
+  
+  // Draw needle - CORRECTED ORIENTATION (0% = right, 100% = up)
+  const needleAngle = (percentage / 100) * Math.PI; // 0% = 0°, 100% = 180°
+  const needleLength = radius - 3;
+  const needleEndX = centerX + Math.cos(needleAngle) * needleLength;
+  const needleEndY = centerY - Math.sin(needleAngle) * needleLength; // Negative Y for upward orientation
+  
+  pdf.setDrawColor(60, 60, 60);
+  pdf.setLineWidth(2);
+  pdf.line(centerX, centerY, needleEndX, needleEndY);
+  
+  // Draw center circle
+  pdf.setFillColor(60, 60, 60);
+  pdf.circle(centerX, centerY, 2, 'F');
+    // Add percentage text
+  pdf.setTextColor(0, 0, 0);
+  pdf.setFontSize(12); // Reduced from 14 to fit smaller speedometer
+  pdf.setFont('helvetica', 'bold');
+  const percentText = `${percentage}%`;
+  const textWidth = pdf.getTextWidth(percentText);
+  pdf.text(percentText, centerX - textWidth/2, centerY + 6); // Adjusted Y position
+  
+  // Add label
+  pdf.setFontSize(7); // Reduced from 8 to fit smaller speedometer
+  pdf.setFont('helvetica', 'normal');
+  const labelWidth = pdf.getTextWidth(label);
+  pdf.text(label, centerX - labelWidth/2, centerY + 14); // Adjusted Y position
+  
+  // Restore graphics state
+  pdf.restoreGraphicsState();
+};
+
 // Enhanced PDF generator for Deliverables Tracker with improved branding
 export const generateDeliverablesTrackerPDF = async (comparisonResult: any, unifiedResults: any[]) => {
   const pdf = new jsPDF('p', 'mm', 'a4');
@@ -220,52 +363,72 @@ export const generateDeliverablesTrackerPDF = async (comparisonResult: any, unif
         Math.round((comparisonResult.unmatchedInFiles.length / (totalFiles + comparisonResult.unmatchedInFiles.length)) * 100) : 0,
       color: [200, 150, 0] as [number, number, number]
     }
-  ];
-
-  // Table headers
+  ];  // Calculate match rate (overall success percentage)
+  const matchRate = Math.round((comparisonResult.matched.length / totalFiles) * 100);
+  
+  // Draw summary table with web-like styling (3 columns - removed Match Rate column)
+  const colWidths = [60, 30, 40]; // Removed the 4th column (40mm)
+  const startX = 20;
+  const tableWidth = colWidths.reduce((a, b) => a + b, 0);
+  const rowHeight = 8;
+  
+  // Draw table header background
+  pdf.setFillColor(249, 250, 251);
+  pdf.rect(startX, currentY - 6, tableWidth, rowHeight, 'F');
+  
+  // Draw table header borders
+  pdf.setDrawColor(229, 231, 235);
+  pdf.setLineWidth(0.3);
+  let currentX = startX;
+  colWidths.forEach((width) => {
+    pdf.rect(currentX, currentY - 6, width, rowHeight, 'S');
+    currentX += width;
+  });
+    // Table headers (3 columns - removed Match Rate)
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(0, 0, 0);
   
-  const colWidths = [60, 30, 40, 40];
-  const startX = 20;
+  pdf.text('Status', startX + 2, currentY);
+  pdf.text('Count', startX + colWidths[0] + 2, currentY);
+  pdf.text('Percentage', startX + colWidths[0] + colWidths[1] + 2, currentY);
   
-  pdf.text('Status', startX, currentY);
-  pdf.text('Count', startX + colWidths[0], currentY);
-  pdf.text('Percentage', startX + colWidths[0] + colWidths[1], currentY);
-  pdf.text('Progress', startX + colWidths[0] + colWidths[1] + colWidths[2], currentY);
+  const tableStartY = currentY;
+  currentY += rowHeight;
   
-  currentY += 5;
-  
-  // Header line
-  pdf.setLineWidth(0.5);
-  pdf.setDrawColor(200, 200, 200);
-  pdf.line(startX, currentY, startX + colWidths.reduce((a, b) => a + b, 0), currentY);
-  
-  currentY += 8;
-  
-  // Summary data rows
+  // Summary data rows with alternating backgrounds
   pdf.setFont('helvetica', 'normal');
   
-  summaryData.forEach((row) => {
+  summaryData.forEach((row, index) => {
+    // Draw row background (alternating)
+    if (index % 2 === 1) {
+      pdf.setFillColor(249, 250, 251);
+      pdf.rect(startX, currentY - 6, tableWidth, rowHeight, 'F');
+    }
+    
+    // Draw row borders
+    currentX = startX;
+    colWidths.forEach((width) => {
+      pdf.rect(currentX, currentY - 6, width, rowHeight, 'S');
+      currentX += width;
+    });
+      // Row data (3 columns - removed Match Rate column data)
     pdf.setTextColor(...row.color);
-    pdf.text(row.status, startX, currentY);
+    pdf.text(row.status, startX + 2, currentY);
     pdf.setTextColor(0, 0, 0);
-    pdf.text(row.count.toString(), startX + colWidths[0], currentY);    pdf.text(`${row.percentage}%`, startX + colWidths[0] + colWidths[1], currentY);
+    pdf.text(row.count.toString(), startX + colWidths[0] + 2, currentY);
+    pdf.text(`${row.percentage}%`, startX + colWidths[0] + colWidths[1] + 2, currentY);
     
-    // Add simple progress indicator
-    const progressText = `${row.percentage}%`;
-    pdf.setTextColor(...row.color);
-    pdf.text(progressText, startX + colWidths[0] + colWidths[1] + colWidths[2], currentY);
-    
-    currentY += 8;
-  });
+    currentY += rowHeight;
+  });  // Add speedometer chart in place of the removed Match Rate column
+  const speedometerX = startX + tableWidth + 5; // Position right after the 3-column table
+  const speedometerY = tableStartY - 2; // Align with table top, slightly higher
+  drawSpeedometer(pdf, speedometerX, speedometerY, matchRate, 'Match Rate');
   
   currentY += 10;
-    // Check if we have space for detailed results on first page
-  const spaceForDetails = pageHeight - currentY - 40; // Leave space for footer
-  
-  if (spaceForDetails > 40 && processedResults.length > 0) {    // Add detailed results header
+  // Start detail table immediately after summary with smart flow
+  if (processedResults.length > 0) {
+    // Add detailed results header
     pdf.setFontSize(14);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(0, 0, 0);
@@ -273,27 +436,13 @@ export const generateDeliverablesTrackerPDF = async (comparisonResult: any, unif
     
     currentY += 12;
     
-    // Detailed results table headers
-    pdf.setFontSize(9);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setTextColor(0, 0, 0);
-    
+    // Detailed results table headers using helper function
     const detailColWidths = [70, 70, 30];
+    currentY = drawDetailTableHeaders(pdf, currentY, startX, detailColWidths);
     
-    pdf.text('Drawing Name', startX, currentY);
-    pdf.text('File Name', startX + detailColWidths[0], currentY);
-    pdf.text('Status', startX + detailColWidths[0] + detailColWidths[1], currentY);
-    
-    currentY += 5;
-    
-    // Header line
-    pdf.line(startX, currentY, startX + detailColWidths.reduce((a, b) => a + b, 0), currentY);
-    
-    currentY += 6;
-      // Add detail rows that fit on first page
+    // Add detail rows with smart page management
     pdf.setFont('helvetica', 'normal');
     let rowsAddedOnFirstPage = 0;
-    const firstPageResults = [];
     
     for (const row of processedResults) {
       if (currentY > pageHeight - 60) break; // Stop if we're too close to footer
@@ -314,14 +463,17 @@ export const generateDeliverablesTrackerPDF = async (comparisonResult: any, unif
       // Check if this row will fit
       if (currentY + rowHeight > pageHeight - 40) break;
       
+      // Draw row with alternating background using helper function
+      drawTableRow(pdf, currentY, [], detailColWidths, startX, false, rowsAddedOnFirstPage % 2 === 1);
+      
       // Draw Drawing Name (multi-line)
       for (let i = 0; i < drawingNameLines.length; i++) {
-        pdf.text(drawingNameLines[i], startX, currentY + (i * lineHeight));
+        pdf.text(drawingNameLines[i], startX + 2, currentY + (i * lineHeight));
       }
       
       // Draw File Name (multi-line)
       for (let i = 0; i < fileNameLines.length; i++) {
-        pdf.text(fileNameLines[i], startX + detailColWidths[0], currentY + (i * lineHeight));
+        pdf.text(fileNameLines[i], startX + detailColWidths[0] + 2, currentY + (i * lineHeight));
       }
       
       // Status with color (single line, centered vertically)
@@ -339,17 +491,16 @@ export const generateDeliverablesTrackerPDF = async (comparisonResult: any, unif
       
       pdf.setTextColor(...statusColors[row.status as keyof typeof statusColors]);
       const statusY = currentY + (maxLines > 1 ? (maxLines * lineHeight) / 2 : 0);
-      pdf.text(statusTexts[row.status as keyof typeof statusTexts], startX + detailColWidths[0] + detailColWidths[1], statusY);
+      pdf.text(statusTexts[row.status as keyof typeof statusTexts], startX + detailColWidths[0] + detailColWidths[1] + 2, statusY);
       
       currentY += rowHeight;
       rowsAddedOnFirstPage++;
-      firstPageResults.push(row);
     }    // Add footer to first page
     const remainingResults = processedResults.slice(rowsAddedOnFirstPage);
-    const totalPages = remainingResults.length > 0 ? Math.ceil(remainingResults.length / 15) + 1 : 1; // Estimate pages
+    const totalPages = remainingResults.length > 0 ? Math.ceil(remainingResults.length / 20) + 1 : 1; // Estimate pages more accurately
     addFooter(1, totalPages);
     
-    // Add continuation pages if needed
+    // Add continuation pages if needed with improved flow
     if (remainingResults.length > 0) {
       let pageNumber = 2;
       let resultIndex = 0;
@@ -368,20 +519,12 @@ export const generateDeliverablesTrackerPDF = async (comparisonResult: any, unif
         
         currentY += 12;
         
-        // Table headers
-        pdf.setFontSize(9);
-        pdf.setFont('helvetica', 'bold');
-        
-        pdf.text('Drawing Name', startX, currentY);
-        pdf.text('File Name', startX + detailColWidths[0], currentY);
-        pdf.text('Status', startX + detailColWidths[0] + detailColWidths[1], currentY);
-        
-        currentY += 5;
-        pdf.line(startX, currentY, startX + detailColWidths.reduce((a, b) => a + b, 0), currentY);
-        currentY += 6;
+        // Table headers using helper function
+        currentY = drawDetailTableHeaders(pdf, currentY, startX, detailColWidths);
         
         // Add results for this page with proper wrapping
         pdf.setFont('helvetica', 'normal');
+        let rowsOnThisPage = 0;
         
         while (resultIndex < remainingResults.length && currentY < pageHeight - 60) {
           const row = remainingResults[resultIndex];
@@ -402,14 +545,17 @@ export const generateDeliverablesTrackerPDF = async (comparisonResult: any, unif
           // Check if this row will fit
           if (currentY + rowHeight > pageHeight - 40) break;
           
+          // Draw row with alternating background using helper function
+          drawTableRow(pdf, currentY, [], detailColWidths, startX, false, rowsOnThisPage % 2 === 1);
+          
           // Draw Drawing Name (multi-line)
           for (let i = 0; i < drawingNameLines.length; i++) {
-            pdf.text(drawingNameLines[i], startX, currentY + (i * lineHeight));
+            pdf.text(drawingNameLines[i], startX + 2, currentY + (i * lineHeight));
           }
           
           // Draw File Name (multi-line)
           for (let i = 0; i < fileNameLines.length; i++) {
-            pdf.text(fileNameLines[i], startX + detailColWidths[0], currentY + (i * lineHeight));
+            pdf.text(fileNameLines[i], startX + detailColWidths[0] + 2, currentY + (i * lineHeight));
           }
           
           // Status with color
@@ -427,10 +573,11 @@ export const generateDeliverablesTrackerPDF = async (comparisonResult: any, unif
           
           pdf.setTextColor(...statusColors[row.status as keyof typeof statusColors]);
           const statusY = currentY + (maxLines > 1 ? (maxLines * lineHeight) / 2 : 0);
-          pdf.text(statusTexts[row.status as keyof typeof statusTexts], startX + detailColWidths[0] + detailColWidths[1], statusY);
+          pdf.text(statusTexts[row.status as keyof typeof statusTexts], startX + detailColWidths[0] + detailColWidths[1] + 2, statusY);
           
           currentY += rowHeight;
           resultIndex++;
+          rowsOnThisPage++;
         }
         
         addFooter(pageNumber, totalPages);
@@ -594,51 +741,66 @@ export const generateNamingValidationPDF = async (complianceData: any, validatio
       percentage: 100 - complianceData.compliancePercentage,
       color: [200, 0, 0] as [number, number, number]
     }
-  ];
-
-  // Table headers
+  ];  // Draw summary table with web-like styling (3 columns - removed Compliance Rate column)
+  const colWidths = [60, 30, 40]; // Removed the 4th column (40mm)
+  const startX = 20;
+  const tableWidth = colWidths.reduce((a, b) => a + b, 0);
+  const rowHeight = 8;
+  
+  // Draw table header background
+  pdf.setFillColor(249, 250, 251);
+  pdf.rect(startX, currentY - 6, tableWidth, rowHeight, 'F');
+  
+  // Draw table header borders
+  pdf.setDrawColor(229, 231, 235);
+  pdf.setLineWidth(0.3);
+  let currentX = startX;
+  colWidths.forEach((width) => {
+    pdf.rect(currentX, currentY - 6, width, rowHeight, 'S');
+    currentX += width;
+  });
+    // Table headers (3 columns - removed Compliance Rate)
   pdf.setFontSize(10);
   pdf.setFont('helvetica', 'bold');
   pdf.setTextColor(0, 0, 0);
   
-  const colWidths = [60, 30, 40, 40];
-  const startX = 20;
+  pdf.text('Status', startX + 2, currentY);
+  pdf.text('Count', startX + colWidths[0] + 2, currentY);
+  pdf.text('Percentage', startX + colWidths[0] + colWidths[1] + 2, currentY);
   
-  pdf.text('Status', startX, currentY);
-  pdf.text('Count', startX + colWidths[0], currentY);
-  pdf.text('Percentage', startX + colWidths[0] + colWidths[1], currentY);
-  pdf.text('Progress', startX + colWidths[0] + colWidths[1] + colWidths[2], currentY);
+  const tableStartY = currentY;
+  currentY += rowHeight;
   
-  currentY += 5;
-  
-  // Header line
-  pdf.setLineWidth(0.5);
-  pdf.setDrawColor(200, 200, 200);
-  pdf.line(startX, currentY, startX + colWidths.reduce((a, b) => a + b, 0), currentY);
-  
-  currentY += 8;
-  
-  // Summary data rows
+  // Summary data rows with alternating backgrounds
   pdf.setFont('helvetica', 'normal');
   
-  summaryData.forEach((row) => {
+  summaryData.forEach((row, index) => {
+    // Draw row background (alternating)
+    if (index % 2 === 1) {
+      pdf.setFillColor(249, 250, 251);
+      pdf.rect(startX, currentY - 6, tableWidth, rowHeight, 'F');
+    }
+    
+    // Draw row borders
+    currentX = startX;
+    colWidths.forEach((width) => {
+      pdf.rect(currentX, currentY - 6, width, rowHeight, 'S');
+      currentX += width;
+    });
+      // Row data (3 columns - removed Compliance Rate column data)
     pdf.setTextColor(...row.color);
-    pdf.text(row.status, startX, currentY);
+    pdf.text(row.status, startX + 2, currentY);
     pdf.setTextColor(0, 0, 0);
-    pdf.text(row.count.toString(), startX + colWidths[0], currentY);
-    pdf.text(`${row.percentage}%`, startX + colWidths[0] + colWidths[1], currentY);
+    pdf.text(row.count.toString(), startX + colWidths[0] + 2, currentY);
+    pdf.text(`${row.percentage}%`, startX + colWidths[0] + colWidths[1] + 2, currentY);
     
-    // Add simple progress indicator
-    const progressText = `${row.percentage}%`;
-    pdf.setTextColor(...row.color);
-    pdf.text(progressText, startX + colWidths[0] + colWidths[1] + colWidths[2], currentY);
-    
-    currentY += 8;
-  });
+    currentY += rowHeight;
+  });  // Add speedometer chart in place of the removed Compliance Rate column
+  const speedometerX = startX + tableWidth + 5; // Position right after the 3-column table
+  const speedometerY = tableStartY - 2; // Align with table top, slightly higher
+  drawSpeedometer(pdf, speedometerX, speedometerY, complianceData.compliancePercentage, 'Compliance Rate');
   
   currentY += 10;
-  // Check if we have space for detailed results on first page
-  const spaceForDetails = pageHeight - currentY - 40; // Leave space for footer
   
   // Status colors and texts
   const statusColors = {
@@ -651,7 +813,8 @@ export const generateNamingValidationPDF = async (complianceData: any, validatio
     'Wrong': 'Invalid'
   };
   
-  if (spaceForDetails > 40 && validationResults.length > 0) {
+  // Start detail table immediately after summary with smart flow
+  if (validationResults.length > 0) {
     // Add detailed results header
     pdf.setFontSize(14);
     pdf.setFont('helvetica', 'bold');
@@ -660,28 +823,38 @@ export const generateNamingValidationPDF = async (complianceData: any, validatio
     
     currentY += 12;
     
-    // Detailed results table headers
+    // Detailed results table headers with web-like styling
     pdf.setFontSize(9);
     pdf.setFont('helvetica', 'bold');
     pdf.setTextColor(0, 0, 0);
     
     const detailColWidths = [50, 50, 25, 45];
+    const tableWidth = detailColWidths.reduce((a, b) => a + b, 0);
+    const rowHeight = 8;
     
-    pdf.text('Folder Path', startX, currentY);
-    pdf.text('File Name', startX + detailColWidths[0], currentY);
-    pdf.text('Status', startX + detailColWidths[0] + detailColWidths[1], currentY);
-    pdf.text('Details', startX + detailColWidths[0] + detailColWidths[1] + detailColWidths[2], currentY);
+    // Draw header background
+    pdf.setFillColor(249, 250, 251);
+    pdf.rect(startX, currentY - 6, tableWidth, rowHeight, 'F');
     
-    currentY += 5;
+    // Draw header borders
+    pdf.setDrawColor(229, 231, 235);
+    pdf.setLineWidth(0.3);
+    let currentX = startX;
+    detailColWidths.forEach((width) => {
+      pdf.rect(currentX, currentY - 6, width, rowHeight, 'S');
+      currentX += width;
+    });
     
-    // Header line
-    pdf.line(startX, currentY, startX + detailColWidths.reduce((a, b) => a + b, 0), currentY);
+    pdf.text('Folder Path', startX + 2, currentY);
+    pdf.text('File Name', startX + detailColWidths[0] + 2, currentY);
+    pdf.text('Status', startX + detailColWidths[0] + detailColWidths[1] + 2, currentY);
+    pdf.text('Details', startX + detailColWidths[0] + detailColWidths[1] + detailColWidths[2] + 2, currentY);
     
-    currentY += 6;
-      // Add detail rows that fit on first page
+    currentY += rowHeight;
+    
+    // Add detail rows with smart page management
     pdf.setFont('helvetica', 'normal');
     let rowsAddedOnFirstPage = 0;
-    const firstPageResults = [];
     
     for (const row of validationResults) {
       if (currentY > pageHeight - 60) break; // Stop if we're too close to footer
@@ -702,14 +875,27 @@ export const generateNamingValidationPDF = async (complianceData: any, validatio
       // Check if this row will fit
       if (currentY + rowHeight > pageHeight - 40) break;
       
+      // Draw row background (alternating)
+      if (rowsAddedOnFirstPage % 2 === 1) {
+        pdf.setFillColor(249, 250, 251);
+        pdf.rect(startX, currentY - 6, tableWidth, rowHeight, 'F');
+      }
+      
+      // Draw row borders
+      currentX = startX;
+      detailColWidths.forEach((width) => {
+        pdf.rect(currentX, currentY - 6, width, rowHeight, 'S');
+        currentX += width;
+      });
+      
       // Draw Folder Path (multi-line)
       for (let i = 0; i < folderPathLines.length; i++) {
-        pdf.text(folderPathLines[i], startX, currentY + (i * lineHeight));
+        pdf.text(folderPathLines[i], startX + 2, currentY + (i * lineHeight));
       }
       
       // Draw File Name (multi-line)
       for (let i = 0; i < fileNameLines.length; i++) {
-        pdf.text(fileNameLines[i], startX + detailColWidths[0], currentY + (i * lineHeight));
+        pdf.text(fileNameLines[i], startX + detailColWidths[0] + 2, currentY + (i * lineHeight));
       }
       
       // Status with color (single line, centered vertically)
@@ -718,24 +904,22 @@ export const generateNamingValidationPDF = async (complianceData: any, validatio
         pdf.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
       }
       const statusY = currentY + (maxLines > 1 ? (maxLines * lineHeight) / 2 : 0);
-      pdf.text(statusTexts[row.status as keyof typeof statusTexts], startX + detailColWidths[0] + detailColWidths[1], statusY);
+      pdf.text(statusTexts[row.status as keyof typeof statusTexts], startX + detailColWidths[0] + detailColWidths[1] + 2, statusY);
       
       // Details in black (multi-line)
       pdf.setTextColor(0, 0, 0);
       for (let i = 0; i < detailsLines.length; i++) {
-        pdf.text(detailsLines[i], startX + detailColWidths[0] + detailColWidths[1] + detailColWidths[2], currentY + (i * lineHeight));
+        pdf.text(detailsLines[i], startX + detailColWidths[0] + detailColWidths[1] + detailColWidths[2] + 2, currentY + (i * lineHeight));
       }
       
       currentY += rowHeight;
       rowsAddedOnFirstPage++;
-      firstPageResults.push(row);
-    }
-      // Add footer to first page
+    }    // Add footer to first page
     const remainingResults = validationResults.slice(rowsAddedOnFirstPage);
-    const totalPages = remainingResults.length > 0 ? Math.ceil(remainingResults.length / 10) + 1 : 1; // Estimate pages
+    const totalPages = remainingResults.length > 0 ? Math.ceil(remainingResults.length / 15) + 1 : 1; // Estimate pages more accurately
     addFooter(1, totalPages);
     
-    // Add continuation pages if needed
+    // Add continuation pages if needed with improved styling
     if (remainingResults.length > 0) {
       let pageNumber = 2;
       let resultIndex = 0;
@@ -754,21 +938,30 @@ export const generateNamingValidationPDF = async (complianceData: any, validatio
         
         currentY += 12;
         
-        // Table headers
+        // Table headers with web-like styling
+        pdf.setFillColor(249, 250, 251);
+        pdf.rect(startX, currentY - 6, tableWidth, rowHeight, 'F');
+        
+        pdf.setDrawColor(229, 231, 235);
+        pdf.setLineWidth(0.3);
+        currentX = startX;
+        detailColWidths.forEach((width) => {
+          pdf.rect(currentX, currentY - 6, width, rowHeight, 'S');
+          currentX += width;
+        });
+        
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'bold');
+        pdf.text('Folder Path', startX + 2, currentY);
+        pdf.text('File Name', startX + detailColWidths[0] + 2, currentY);
+        pdf.text('Status', startX + detailColWidths[0] + detailColWidths[1] + 2, currentY);
+        pdf.text('Details', startX + detailColWidths[0] + detailColWidths[1] + detailColWidths[2] + 2, currentY);
         
-        pdf.text('Folder Path', startX, currentY);
-        pdf.text('File Name', startX + detailColWidths[0], currentY);
-        pdf.text('Status', startX + detailColWidths[0] + detailColWidths[1], currentY);
-        pdf.text('Details', startX + detailColWidths[0] + detailColWidths[1] + detailColWidths[2], currentY);
-        
-        currentY += 5;
-        pdf.line(startX, currentY, startX + detailColWidths.reduce((a, b) => a + b, 0), currentY);
-        currentY += 6;
+        currentY += rowHeight;
         
         // Add results for this page with proper wrapping
         pdf.setFont('helvetica', 'normal');
+        let rowsOnThisPage = 0;
         
         while (resultIndex < remainingResults.length && currentY < pageHeight - 60) {
           const row = remainingResults[resultIndex];
@@ -789,14 +982,27 @@ export const generateNamingValidationPDF = async (complianceData: any, validatio
           // Check if this row will fit
           if (currentY + rowHeight > pageHeight - 40) break;
           
+          // Draw row background (alternating)
+          if (rowsOnThisPage % 2 === 1) {
+            pdf.setFillColor(249, 250, 251);
+            pdf.rect(startX, currentY - 6, tableWidth, rowHeight, 'F');
+          }
+          
+          // Draw row borders
+          currentX = startX;
+          detailColWidths.forEach((width) => {
+            pdf.rect(currentX, currentY - 6, width, rowHeight, 'S');
+            currentX += width;
+          });
+          
           // Draw Folder Path (multi-line)
           for (let i = 0; i < folderPathLines.length; i++) {
-            pdf.text(folderPathLines[i], startX, currentY + (i * lineHeight));
+            pdf.text(folderPathLines[i], startX + 2, currentY + (i * lineHeight));
           }
           
           // Draw File Name (multi-line)
           for (let i = 0; i < fileNameLines.length; i++) {
-            pdf.text(fileNameLines[i], startX + detailColWidths[0], currentY + (i * lineHeight));
+            pdf.text(fileNameLines[i], startX + detailColWidths[0] + 2, currentY + (i * lineHeight));
           }
           
           // Status with color
@@ -805,16 +1011,17 @@ export const generateNamingValidationPDF = async (complianceData: any, validatio
             pdf.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
           }
           const statusY = currentY + (maxLines > 1 ? (maxLines * lineHeight) / 2 : 0);
-          pdf.text(statusTexts[row.status as keyof typeof statusTexts], startX + detailColWidths[0] + detailColWidths[1], statusY);
+          pdf.text(statusTexts[row.status as keyof typeof statusTexts], startX + detailColWidths[0] + detailColWidths[1] + 2, statusY);
           
           // Details in black (multi-line)
           pdf.setTextColor(0, 0, 0);
           for (let i = 0; i < detailsLines.length; i++) {
-            pdf.text(detailsLines[i], startX + detailColWidths[0] + detailColWidths[1] + detailColWidths[2], currentY + (i * lineHeight));
+            pdf.text(detailsLines[i], startX + detailColWidths[0] + detailColWidths[1] + detailColWidths[2] + 2, currentY + (i * lineHeight));
           }
           
           currentY += rowHeight;
           resultIndex++;
+          rowsOnThisPage++;
         }
         
         addFooter(pageNumber, totalPages);
