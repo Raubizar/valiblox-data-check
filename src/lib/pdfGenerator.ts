@@ -103,30 +103,29 @@ const drawSpeedometer = (pdf: jsPDF, x: number, y: number, percentage: number, l
   
   // Save graphics state
   pdf.saveGraphicsState();
-  
-  // Draw arc segments for color coding using line segments
+    // Draw arc segments for color coding using line segments
   const segments = 72; // Number of line segments to approximate arc (more for smoother curves)
   const angleStep = Math.PI / segments; // 180° in segments
   const arcThickness = 3;
   
-  // Red zone (0-40%) - 0° to 72° (right side) - CORRECTED ORIENTATION
+  // Red zone (0-40%) - 180° to 108° (left to center-left) - HORIZONTAL ORIENTATION
   pdf.setDrawColor(220, 38, 127);
   pdf.setLineWidth(arcThickness);
   for (let i = 0; i < Math.floor(segments * 0.4); i++) {
-    const angle1 = (i * angleStep);
-    const angle2 = ((i + 1) * angleStep);
+    const angle1 = Math.PI - (i * angleStep); // Start from 180° (left) and go clockwise
+    const angle2 = Math.PI - ((i + 1) * angleStep);
     const x1 = centerX + Math.cos(angle1) * radius;
-    const y1 = centerY - Math.sin(angle1) * radius; // Negative Y for upward orientation
+    const y1 = centerY - Math.sin(angle1) * radius;
     const x2 = centerX + Math.cos(angle2) * radius;
     const y2 = centerY - Math.sin(angle2) * radius;
     pdf.line(x1, y1, x2, y2);
   }
   
-  // Yellow zone (40-80%) - 72° to 144°
+  // Yellow zone (40-80%) - 108° to 36°
   pdf.setDrawColor(234, 179, 8);
   for (let i = Math.floor(segments * 0.4); i < Math.floor(segments * 0.8); i++) {
-    const angle1 = (i * angleStep);
-    const angle2 = ((i + 1) * angleStep);
+    const angle1 = Math.PI - (i * angleStep);
+    const angle2 = Math.PI - ((i + 1) * angleStep);
     const x1 = centerX + Math.cos(angle1) * radius;
     const y1 = centerY - Math.sin(angle1) * radius;
     const x2 = centerX + Math.cos(angle2) * radius;
@@ -134,11 +133,11 @@ const drawSpeedometer = (pdf: jsPDF, x: number, y: number, percentage: number, l
     pdf.line(x1, y1, x2, y2);
   }
   
-  // Green zone (80-100%) - 144° to 180° (left side)
+  // Green zone (80-100%) - 36° to 0° (center-right to right side)
   pdf.setDrawColor(34, 197, 94);
   for (let i = Math.floor(segments * 0.8); i < segments; i++) {
-    const angle1 = (i * angleStep);
-    const angle2 = ((i + 1) * angleStep);
+    const angle1 = Math.PI - (i * angleStep);
+    const angle2 = Math.PI - ((i + 1) * angleStep);
     const x1 = centerX + Math.cos(angle1) * radius;
     const y1 = centerY - Math.sin(angle1) * radius;
     const x2 = centerX + Math.cos(angle2) * radius;
@@ -146,11 +145,11 @@ const drawSpeedometer = (pdf: jsPDF, x: number, y: number, percentage: number, l
     pdf.line(x1, y1, x2, y2);
   }
   
-  // Draw needle - CORRECTED ORIENTATION (0% = right, 100% = up)
-  const needleAngle = (percentage / 100) * Math.PI; // 0% = 0°, 100% = 180°
+  // Draw needle - HORIZONTAL ORIENTATION (0% = left, 100% = right)
+  const needleAngle = Math.PI - (percentage / 100) * Math.PI; // 0% = 180° (left), 100% = 0° (right)
   const needleLength = radius - 3;
   const needleEndX = centerX + Math.cos(needleAngle) * needleLength;
-  const needleEndY = centerY - Math.sin(needleAngle) * needleLength; // Negative Y for upward orientation
+  const needleEndY = centerY - Math.sin(needleAngle) * needleLength;
   
   pdf.setDrawColor(60, 60, 60);
   pdf.setLineWidth(2);
@@ -454,11 +453,10 @@ export const generateDeliverablesTrackerPDF = async (comparisonResult: any, unif
       const columnWidthInMM = detailColWidths[0] * 0.75; // Convert to approximate mm
       const drawingNameLines = pdf.splitTextToSize(row.drawingName || '-', columnWidthInMM);
       const fileNameLines = pdf.splitTextToSize(row.fileName || '-', detailColWidths[1] * 0.75);
-      
-      // Calculate row height based on maximum lines needed
+        // Calculate row height based on maximum lines needed
       const maxLines = Math.max(drawingNameLines.length, fileNameLines.length, 1);
-      const lineHeight = 4;
-      const rowHeight = maxLines * lineHeight + 2; // Add padding
+      const lineHeight = 5; // Increased from 4 to give more space for text
+      const rowHeight = maxLines * lineHeight + 3; // Increased padding from 2 to 3
       
       // Check if this row will fit
       if (currentY + rowHeight > pageHeight - 40) break;
@@ -536,11 +534,10 @@ export const generateDeliverablesTrackerPDF = async (comparisonResult: any, unif
           const columnWidthInMM = detailColWidths[0] * 0.75;
           const drawingNameLines = pdf.splitTextToSize(row.drawingName || '-', columnWidthInMM);
           const fileNameLines = pdf.splitTextToSize(row.fileName || '-', detailColWidths[1] * 0.75);
-          
-          // Calculate row height
+            // Calculate row height
           const maxLines = Math.max(drawingNameLines.length, fileNameLines.length, 1);
-          const lineHeight = 4;
-          const rowHeight = maxLines * lineHeight + 2;
+          const lineHeight = 5; // Increased from 4 to give more space for text
+          const rowHeight = maxLines * lineHeight + 3; // Increased padding from 2 to 3
           
           // Check if this row will fit
           if (currentY + rowHeight > pageHeight - 40) break;
@@ -866,11 +863,10 @@ export const generateNamingValidationPDF = async (complianceData: any, validatio
       const folderPathLines = pdf.splitTextToSize(row.folderPath || '-', detailColWidths[0] * 0.75);
       const fileNameLines = pdf.splitTextToSize(row.fileName || '-', detailColWidths[1] * 0.75);
       const detailsLines = pdf.splitTextToSize(row.details || '-', detailColWidths[3] * 0.75);
-      
-      // Calculate row height based on maximum lines needed
+        // Calculate row height based on maximum lines needed
       const maxLines = Math.max(folderPathLines.length, fileNameLines.length, detailsLines.length, 1);
-      const lineHeight = 4;
-      const rowHeight = maxLines * lineHeight + 2; // Add padding
+      const lineHeight = 5; // Increased from 4 to give more space for text
+      const rowHeight = maxLines * lineHeight + 3; // Increased padding from 2 to 3
       
       // Check if this row will fit
       if (currentY + rowHeight > pageHeight - 40) break;
@@ -973,11 +969,10 @@ export const generateNamingValidationPDF = async (complianceData: any, validatio
           const folderPathLines = pdf.splitTextToSize(row.folderPath || '-', detailColWidths[0] * 0.75);
           const fileNameLines = pdf.splitTextToSize(row.fileName || '-', detailColWidths[1] * 0.75);
           const detailsLines = pdf.splitTextToSize(row.details || '-', detailColWidths[3] * 0.75);
-          
-          // Calculate row height
+            // Calculate row height
           const maxLines = Math.max(folderPathLines.length, fileNameLines.length, detailsLines.length, 1);
-          const lineHeight = 4;
-          const rowHeight = maxLines * lineHeight + 2;
+          const lineHeight = 5; // Increased from 4 to give more space for text
+          const rowHeight = maxLines * lineHeight + 3; // Increased padding from 2 to 3
           
           // Check if this row will fit
           if (currentY + rowHeight > pageHeight - 40) break;

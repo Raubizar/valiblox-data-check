@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speedometer Mirror Test</title>
+    <script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            color: #555;
+            margin-top: 0;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .results {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 3px;
+        }
+        .speedometer-info {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .speedometer-info h4 {
+            margin-top: 0;
+            color: #1976d2;
+        }
+        .feature-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .feature-list li:before {
+            content: "✓ ";
+            color: #28a745;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Speedometer Mirror & Row Height Test</h1>
+        
+        <div class="speedometer-info">
+            <h4>Expected Changes</h4>
+            <ul class="feature-list">
+                <li><strong>Horizontal Orientation:</strong> 0% now points LEFT (9 o'clock), 100% points RIGHT (3 o'clock)</li>
+                <li><strong>Improved Row Heights:</strong> Table rows now have 25% more spacing (lineHeight: 4→5, padding: 2→3)</li>
+                <li><strong>Better Text Readability:</strong> Multi-line text content has more breathing room</li>
+                <li><strong>Consistent Alignment:</strong> Both web and PDF use the same horizontal speedometer orientation</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 1: Generate Deliverables Tracker PDF</h3>
+            <p>Creates a PDF with speedometer showing Match Rate using horizontal orientation (0% left → 100% right)</p>
+            <button onclick="generateDeliverablesTrackerPDF()">Generate Deliverables PDF</button>
+            <div id="deliverables-results" class="results" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 2: Generate Naming Validation PDF</h3>
+            <p>Creates a PDF with speedometer showing Compliance Rate using horizontal orientation</p>
+            <button onclick="generateNamingValidationPDF()">Generate Naming Validation PDF</button>
+            <div id="naming-results" class="results" style="display:none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>Test 3: Visual Speedometer Comparison</h3>
+            <p>Creates a comparison chart showing different percentages with the new horizontal orientation</p>
+            <button onclick="generateSpeedometerComparison()">Generate Speedometer Comparison</button>
+            <div id="comparison-results" class="results" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Enhanced speedometer drawing function with HORIZONTAL ORIENTATION
+        function drawSpeedometer(pdf, x, y, percentage, label) {
+            const radius = 15;
+            const centerX = x + radius;
+            const centerY = y + radius;
+            
+            pdf.saveGraphicsState();
+            
+            const segments = 72;
+            const angleStep = Math.PI / segments;
+            const arcThickness = 3;
+            
+            // Red zone (0-40%) - 180° to 108° (left to center-left) - HORIZONTAL ORIENTATION
+            pdf.setDrawColor(220, 38, 127);
+            pdf.setLineWidth(arcThickness);
+            for (let i = 0; i < Math.floor(segments * 0.4); i++) {
+                const angle1 = Math.PI - (i * angleStep); // Start from 180° (left) and go clockwise
+                const angle2 = Math.PI - ((i + 1) * angleStep);
+                const x1 = centerX + Math.cos(angle1) * radius;
+                const y1 = centerY - Math.sin(angle1) * radius;
+                const x2 = centerX + Math.cos(angle2) * radius;
+                const y2 = centerY - Math.sin(angle2) * radius;
+                pdf.line(x1, y1, x2, y2);
+            }
+            
+            // Yellow zone (40-80%) - 108° to 36°
+            pdf.setDrawColor(234, 179, 8);
+            for (let i = Math.floor(segments * 0.4); i < Math.floor(segments * 0.8); i++) {
+                const angle1 = Math.PI - (i * angleStep);
+                const angle2 = Math.PI - ((i + 1) * angleStep);
+                const x1 = centerX + Math.cos(angle1) * radius;
+                const y1 = centerY - Math.sin(angle1) * radius;
+                const x2 = centerX + Math.cos(angle2) * radius;
+                const y2 = centerY - Math.sin(angle2) * radius;
+                pdf.line(x1, y1, x2, y2);
+            }
+            
+            // Green zone (80-100%) - 36° to 0° (center-right to right side)
+            pdf.setDrawColor(34, 197, 94);
+            for (let i = Math.floor(segments * 0.8); i < segments; i++) {
+                const angle1 = Math.PI - (i * angleStep);
+                const angle2 = Math.PI - ((i + 1) * angleStep);
+                const x1 = centerX + Math.cos(angle1) * radius;
+                const y1 = centerY - Math.sin(angle1) * radius;
+                const x2 = centerX + Math.cos(angle2) * radius;
+                const y2 = centerY - Math.sin(angle2) * radius;
+                pdf.line(x1, y1, x2, y2);
+            }
+            
+            // Draw needle - HORIZONTAL ORIENTATION (0% = left, 100% = right)
+            const needleAngle = Math.PI - (percentage / 100) * Math.PI; // 0% = 180° (left), 100% = 0° (right)
+            const needleLength = radius - 3;
+            const needleEndX = centerX + Math.cos(needleAngle) * needleLength;
+            const needleEndY = centerY - Math.sin(needleAngle) * needleLength;
+            
+            pdf.setDrawColor(60, 60, 60);
+            pdf.setLineWidth(2);
+            pdf.line(centerX, centerY, needleEndX, needleEndY);
+            
+            // Draw center circle
+            pdf.setFillColor(60, 60, 60);
+            pdf.circle(centerX, centerY, 2, 'F');
+            
+            // Add percentage text
+            pdf.setTextColor(0, 0, 0);
+            pdf.setFontSize(12);
+            pdf.setFont('helvetica', 'bold');
+            const percentText = `${percentage}%`;
+            const textWidth = pdf.getTextWidth(percentText);
+            pdf.text(percentText, centerX - textWidth/2, centerY + 6);
+            
+            // Add label
+            pdf.setFontSize(7);
+            pdf.setFont('helvetica', 'normal');
+            const labelWidth = pdf.getTextWidth(label);
+            pdf.text(label, centerX - labelWidth/2, centerY + 14);
+            
+            pdf.restoreGraphicsState();
+        }
+
+        function generateDeliverablesTrackerPDF() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            
+            // Add title
+            pdf.setFontSize(20);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Deliverables Tracker - Mirror Test', 20, 30);
+            
+            // Test speedometer with different values
+            let currentY = 50;
+            const testValues = [25, 65, 85];
+            const labels = ['Low Performance', 'Medium Performance', 'High Performance'];
+            
+            testValues.forEach((value, index) => {
+                pdf.setFontSize(14);
+                pdf.setFont('helvetica', 'normal');
+                pdf.text(`Test ${index + 1}: ${labels[index]} (${value}%)`, 20, currentY);
+                
+                // Draw speedometer with improved row height spacing
+                drawSpeedometer(pdf, 20, currentY + 5, value, labels[index]);
+                
+                // Add orientation indicators
+                pdf.setFontSize(8);
+                pdf.setTextColor(100, 100, 100);
+                pdf.text('0%', 15, currentY + 25); // Left side
+                pdf.text('100%', 55, currentY + 25); // Right side
+                
+                currentY += 50;
+            });
+            
+            // Add improved table with better row heights
+            currentY += 10;
+            pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(0, 0, 0);
+            pdf.text('Sample Table with Improved Row Heights', 20, currentY);
+            currentY += 10;
+            
+            // Create table with longer text to test row height improvements
+            const sampleData = [
+                ['Very Long Drawing Name That Should Wrap Nicely', 'Corresponding_File_Name_That_Is_Also_Long.dwg', 'Matched'],
+                ['Another Long Name With Multiple Words', 'Another_Long_File_Name_Example.pdf', 'Missing'],
+                ['Short Name', 'short.dwg', 'Matched']
+            ];
+            
+            const colWidths = [70, 70, 30];
+            const startX = 20;
+            
+            // Headers
+            pdf.setFontSize(9);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Drawing Name', startX + 2, currentY);
+            pdf.text('File Name', startX + colWidths[0] + 2, currentY);
+            pdf.text('Status', startX + colWidths[0] + colWidths[1] + 2, currentY);
+            currentY += 8;
+            
+            // Sample rows with improved spacing
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(8);
+            
+            sampleData.forEach((row, rowIndex) => {
+                const drawingNameLines = pdf.splitTextToSize(row[0], colWidths[0] * 0.75);
+                const fileNameLines = pdf.splitTextToSize(row[1], colWidths[1] * 0.75);
+                
+                const maxLines = Math.max(drawingNameLines.length, fileNameLines.length, 1);
+                const lineHeight = 5; // Improved from 4
+                const rowHeight = maxLines * lineHeight + 3; // Improved padding
+                
+                // Draw text with improved spacing
+                drawingNameLines.forEach((line, i) => {
+                    pdf.text(line, startX + 2, currentY + (i * lineHeight));
+                });
+                
+                fileNameLines.forEach((line, i) => {
+                    pdf.text(line, startX + colWidths[0] + 2, currentY + (i * lineHeight));
+                });
+                
+                pdf.text(row[2], startX + colWidths[0] + colWidths[1] + 2, currentY);
+                
+                currentY += rowHeight;
+            });
+            
+            pdf.save('speedometer-mirror-test.pdf');
+            
+            document.getElementById('deliverables-results').style.display = 'block';
+            document.getElementById('deliverables-results').innerHTML = `
+                <strong>✅ PDF Generated Successfully!</strong><br>
+                • File: speedometer-mirror-test.pdf<br>
+                • Speedometer Orientation: 0% LEFT → 100% RIGHT<br>
+                • Row Heights: Improved spacing (lineHeight: 5, padding: 3)<br>
+                • Test Values: 25%, 65%, 85% with different performance levels
+            `;
+        }
+
+        function generateNamingValidationPDF() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            
+            pdf.setFontSize(20);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Naming Validation - Mirror Test', 20, 30);
+            
+            // Test compliance rate speedometer
+            const complianceRate = 78;
+            pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`Compliance Rate Test: ${complianceRate}%`, 20, 50);
+            
+            drawSpeedometer(pdf, 20, 55, complianceRate, 'Compliance Rate');
+            
+            // Add orientation indicators
+            pdf.setFontSize(8);
+            pdf.setTextColor(100, 100, 100);
+            pdf.text('0% (Left)', 15, 80);
+            pdf.text('100% (Right)', 50, 80);
+            
+            // Reset color
+            pdf.setTextColor(0, 0, 0);
+            
+            // Sample validation table with improved row heights
+            const validationData = [
+                ['Project/Folder/Subfolder/Very/Deep/Path', 'Very_Long_File_Name_That_Should_Wrap_Properly.dwg', 'Valid', 'Meets all naming conventions and standards'],
+                ['Short/Path', 'normal.pdf', 'Invalid', 'Missing revision number'],
+                ['Another/Long/Path/With/Multiple/Levels', 'Another_Very_Long_File_Name_Example.xlsx', 'Valid', 'Complies with naming standards']
+            ];
+            
+            let tableY = 100;
+            pdf.setFontSize(12);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Sample Validation Results (Improved Row Heights)', 20, tableY);
+            tableY += 15;
+            
+            const detailColWidths = [50, 50, 25, 45];
+            const startX = 20;
+            
+            // Headers
+            pdf.setFontSize(9);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Folder Path', startX + 2, tableY);
+            pdf.text('File Name', startX + detailColWidths[0] + 2, tableY);
+            pdf.text('Status', startX + detailColWidths[0] + detailColWidths[1] + 2, tableY);
+            pdf.text('Details', startX + detailColWidths[0] + detailColWidths[1] + detailColWidths[2] + 2, tableY);
+            tableY += 10;
+            
+            // Rows with improved spacing
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(8);
+            
+            validationData.forEach((row) => {
+                const folderPathLines = pdf.splitTextToSize(row[0], detailColWidths[0] * 0.75);
+                const fileNameLines = pdf.splitTextToSize(row[1], detailColWidths[1] * 0.75);
+                const detailsLines = pdf.splitTextToSize(row[3], detailColWidths[3] * 0.75);
+                
+                const maxLines = Math.max(folderPathLines.length, fileNameLines.length, detailsLines.length, 1);
+                const lineHeight = 5; // Improved from 4
+                const rowHeight = maxLines * lineHeight + 3; // Improved padding
+                
+                // Draw multi-line text with improved spacing
+                folderPathLines.forEach((line, i) => {
+                    pdf.text(line, startX + 2, tableY + (i * lineHeight));
+                });
+                
+                fileNameLines.forEach((line, i) => {
+                    pdf.text(line, startX + detailColWidths[0] + 2, tableY + (i * lineHeight));
+                });
+                
+                // Status with color
+                if (row[2] === 'Valid') {
+                    pdf.setTextColor(0, 150, 0);
+                } else {
+                    pdf.setTextColor(200, 0, 0);
+                }
+                pdf.text(row[2], startX + detailColWidths[0] + detailColWidths[1] + 2, tableY);
+                pdf.setTextColor(0, 0, 0);
+                
+                detailsLines.forEach((line, i) => {
+                    pdf.text(line, startX + detailColWidths[0] + detailColWidths[1] + detailColWidths[2] + 2, tableY + (i * lineHeight));
+                });
+                
+                tableY += rowHeight;
+            });
+            
+            pdf.save('naming-validation-mirror-test.pdf');
+            
+            document.getElementById('naming-results').style.display = 'block';
+            document.getElementById('naming-results').innerHTML = `
+                <strong>✅ PDF Generated Successfully!</strong><br>
+                • File: naming-validation-mirror-test.pdf<br>
+                • Compliance Rate: ${complianceRate}%<br>
+                • Speedometer Orientation: HORIZONTAL (0% left → 100% right)<br>
+                • Row Heights: Enhanced spacing for multi-line content<br>
+                • Table: Includes sample validation data with improved readability
+            `;
+        }
+
+        function generateSpeedometerComparison() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            
+            pdf.setFontSize(20);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Speedometer Orientation Comparison', 20, 30);
+            
+            pdf.setFontSize(12);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text('All speedometers now use HORIZONTAL orientation:', 20, 45);
+            pdf.text('• 0% points to the LEFT (9 o\'clock position)', 20, 52);
+            pdf.text('• 100% points to the RIGHT (3 o\'clock position)', 20, 59);
+            
+            const testPercentages = [0, 25, 50, 75, 100];
+            const labels = ['Empty', 'Low', 'Medium', 'High', 'Full'];
+            
+            let currentY = 75;
+            testPercentages.forEach((percentage, index) => {
+                pdf.setFontSize(10);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text(`${percentage}% - ${labels[index]}`, 20, currentY);
+                
+                drawSpeedometer(pdf, 80, currentY - 10, percentage, labels[index]);
+                
+                // Add directional indicators
+                pdf.setFontSize(8);
+                pdf.setTextColor(100, 100, 100);
+                pdf.text('LEFT', 75, currentY + 15);
+                pdf.text('RIGHT', 125, currentY + 15);
+                pdf.setTextColor(0, 0, 0);
+                
+                currentY += 35;
+            });
+            
+            pdf.save('speedometer-orientation-comparison.pdf');
+            
+            document.getElementById('comparison-results').style.display = 'block';
+            document.getElementById('comparison-results').innerHTML = `
+                <strong>✅ Comparison PDF Generated!</strong><br>
+                • File: speedometer-orientation-comparison.pdf<br>
+                • Shows: 0%, 25%, 50%, 75%, 100% examples<br>
+                • Orientation: All horizontal (0% left → 100% right)<br>
+                • Perfect for visual verification of the mirroring change
+            `;
+        }
+    </script>
+</body>
+</html>
