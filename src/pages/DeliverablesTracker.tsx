@@ -16,7 +16,10 @@ import { useSampleLoader } from "@/hooks/useSampleLoader";
 import { DownloadModal } from "@/components/DownloadModal";
 import SpeedometerChart from "@/components/SpeedometerChart";
 import { useAuth } from "@/hooks/useAuth";
+import { useFakeAuth } from "@/hooks/useFakeAuth";
 import { generateDeliverablesTrackerPDF } from "@/lib/pdfGenerator";
+import { ProjectContextSelector } from "@/components/ProjectContextSelector";
+import type { Project } from "@/types/database";
 
 const STEPS = [
   { id: 1, title: 'Upload Excel', description: 'Select your deliverables list' },
@@ -77,10 +80,13 @@ const DeliverablesTracker = () => {
   // Sample loader state
   const [showSampleLoader, setShowSampleLoader] = useState<boolean>(true);
   const { loadSampleZip, isLoading, loadingProgress } = useSampleLoader();
-  
   // Auth and download modal state
   const { user, isAuthenticated } = useAuth();
+  const { isFakeLoggedIn } = useFakeAuth();
   const [showDownloadModal, setShowDownloadModal] = useState(false);
+    // Project context state
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedDiscipline, setSelectedDiscipline] = useState<string>('');
   
   // Timing and scroll state
   const [comparisonStartTime, setComparisonStartTime] = useState<number | null>(null);
@@ -160,12 +166,17 @@ const DeliverablesTracker = () => {
     } else {
       setShowDownloadModal(true);
     }  };
-
   const handlePDFExport = async () => {
     if (!comparisonResult) return;
     
     try {
-      await generateDeliverablesTrackerPDF(comparisonResult, unifiedResults);
+      await generateDeliverablesTrackerPDF(
+        comparisonResult, 
+        unifiedResults,
+        selectedProject?.id,
+        selectedDiscipline || undefined,
+        selectedProject?.name
+      );
     } catch (error) {
       console.error('Error generating PDF:', error);
       // You could add a toast notification here
@@ -460,7 +471,34 @@ const DeliverablesTracker = () => {
                   {isLoading ? 'Loading sample...' : 'Try sample project'}
                 </button>
               )}
-            </div>          </div>          {/* Step Progress Indicator */}
+            </div>          </div>          {/* Project Context Selection - Only visible when logged in */}
+          {isFakeLoggedIn && (
+            <div className="flex justify-center mb-8">
+              <div className="w-2/3">
+                <ProjectContextSelector
+                  selectedProjectId={selectedProject?.id || null}
+                  selectedDisciplineId={selectedDiscipline || null}                  onProjectChange={(projectId, disciplineId, projectName) => {
+                    if (projectId && projectName) {
+                      // Create a basic project object with required fields
+                      setSelectedProject({
+                        id: projectId,
+                        name: projectName,
+                        description: '',
+                        status: 'active' as const,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                      });
+                    } else {
+                      setSelectedProject(null);
+                    }
+                    setSelectedDiscipline(disciplineId || '');
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step Progress Indicator */}
           <StepIndicator currentStep={currentStep} />{/* Progressive Steps Layout */}
           <div className="space-y-6">
             {/* Step 1: Excel Upload - Always visible */}

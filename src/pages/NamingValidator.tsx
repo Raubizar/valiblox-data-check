@@ -8,6 +8,7 @@ import { ValidationResults } from "@/components/NamingValidator/ValidationResult
 import { HowItWorks } from "@/components/NamingValidator/HowItWorks";
 import { FeaturesSection } from "@/components/NamingValidator/FeaturesSection";
 import { CompactProjectSelector } from "@/components/CompactProjectSelector";
+import { ProjectContextSelector } from "@/components/ProjectContextSelector";
 import { validateName, parseNamingRules, NamingRules } from "@/lib/naming";
 import { ProjectService } from "@/lib/projectService";
 import type { Project } from "@/types/database";
@@ -82,9 +83,9 @@ const NamingValidator = () => {
     compliancePercentage: 0
   });
   const [isProcessing, setIsProcessing] = useState(false);
-  
-  // Project management state
+    // Project management state
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedDiscipline, setSelectedDiscipline] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   
   // Timing and scroll state
@@ -324,13 +325,28 @@ const NamingValidator = () => {
                 <Upload className="w-5 h-5 mr-2" />
                 Start Validating Files
               </Button>            )}
-          </div>          {/* Compact Project Selection - Only visible when logged in */}
+          </div>          {/* Project Context Selection - Only visible when logged in */}
           {isFakeLoggedIn && (
             <div className="flex justify-center mb-8">
-              <div className="w-1/2">
-                <CompactProjectSelector
-                  selectedProject={selectedProject}
-                  onProjectSelect={setSelectedProject}
+              <div className="w-2/3">
+                <ProjectContextSelector
+                  selectedProjectId={selectedProject?.id || null}
+                  selectedDisciplineId={selectedDiscipline || null}                  onProjectChange={(projectId, disciplineId, projectName) => {
+                    if (projectId && projectName) {
+                      // Create a basic project object with required fields
+                      setSelectedProject({
+                        id: projectId,
+                        name: projectName,
+                        description: '',
+                        status: 'active' as const,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                      });
+                    } else {
+                      setSelectedProject(null);
+                    }
+                    setSelectedDiscipline(disciplineId || '');
+                  }}
                 />
               </div>
             </div>
@@ -353,6 +369,7 @@ const NamingValidator = () => {
                 onDownloadRequest={handleDownloadRequest}
                 onSaveToProject={isFakeLoggedIn ? handleSaveToProject : undefined}
                 selectedProject={isFakeLoggedIn ? selectedProject : undefined}
+                selectedDiscipline={selectedDiscipline}
                 isSaving={isSaving}
               />
             </div>

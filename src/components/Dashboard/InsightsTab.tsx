@@ -1,43 +1,70 @@
 
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { toast } from "@/hooks/use-toast";
+import { ProjectService } from "@/lib/projectService";
+import type { DashboardInsights, DisciplinePerformance } from "@/types/database";
+import { SpeedometerChart } from "@/components/SpeedometerChart";
 
 export const InsightsTab = () => {
-  const complianceData = [
-    { month: "Jan", "Office Building A": 88, "Residential Complex B": 92, "Infrastructure Project C": 85 },
-    { month: "Feb", "Office Building A": 91, "Residential Complex B": 89, "Infrastructure Project C": 88 },
-    { month: "Mar", "Office Building A": 94, "Residential Complex B": 93, "Infrastructure Project C": 90 },
-    { month: "Apr", "Office Building A": 96, "Residential Complex B": 95, "Infrastructure Project C": 92 },
-    { month: "May", "Office Building A": 95, "Residential Complex B": 97, "Infrastructure Project C": 94 },
-  ];
+  const [insights, setInsights] = useState<DashboardInsights | null>(null);
+  const [disciplines, setDisciplines] = useState<DisciplinePerformance[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const reportsData = [
-    { month: "Jan", reports: 12 },
-    { month: "Feb", reports: 18 },
-    { month: "Mar", reports: 15 },
-    { month: "Apr", reports: 22 },
-    { month: "May", reports: 19 },
-  ];
+  useEffect(() => {
+    loadInsights();
+  }, []);
+
+  const loadInsights = async () => {
+    try {
+      setLoading(true);
+      const [dashboardData, disciplineData] = await Promise.all([
+        ProjectService.getDashboardInsights(),
+        ProjectService.getDisciplinePerformance()
+      ]);
+      setInsights(dashboardData);
+      setDisciplines(disciplineData);
+    } catch (error) {
+      console.error('Error loading insights:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load insights. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const chartConfig = {
-    "Office Building A": {
-      label: "Office Building A",
+    match_rate: {
+      label: "Match Rate",
       color: "#10b981",
     },
-    "Residential Complex B": {
-      label: "Residential Complex B",
+    compliance_rate: {
+      label: "Compliance Rate",
       color: "#3b82f6",
-    },
-    "Infrastructure Project C": {
-      label: "Infrastructure Project C",
-      color: "#f59e0b",
     },
     reports: {
       label: "Reports",
       color: "#8b5cf6",
     },
   };
+
+  const disciplineColors = [
+    '#EF4444', '#3B82F6', '#10B981', '#F59E0B', 
+    '#8B5CF6', '#DC2626', '#059669', '#6B7280'
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -49,18 +76,30 @@ export const InsightsTab = () => {
             <CardTitle className="text-sm font-medium text-gray-600">Total Projects</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">12</div>
-            <p className="text-xs text-green-600 mt-1">+2 this month</p>
+            <div className="text-2xl font-bold text-gray-900">{insights?.total_projects || 0}</div>
+            <p className="text-xs text-gray-500 mt-1">Active projects</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Files Validated</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600">Total Reports</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">1,247</div>
-            <p className="text-xs text-green-600 mt-1">+156 this week</p>
+            <div className="text-2xl font-bold text-gray-900">{insights?.total_reports || 0}</div>
+            <p className="text-xs text-gray-500 mt-1">Generated reports</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Avg Match Rate</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-gray-900">
+              {insights?.avg_match_rate ? `${Math.round(insights.avg_match_rate)}%` : 'N/A'}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Deliverables validation</p>
           </CardContent>
         </Card>
 
@@ -69,18 +108,10 @@ export const InsightsTab = () => {
             <CardTitle className="text-sm font-medium text-gray-600">Avg Compliance</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-900">94.2%</div>
-            <p className="text-xs text-green-600 mt-1">+2.1% from last month</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Time Saved</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">47h</div>
-            <p className="text-xs text-green-600 mt-1">This month</p>
+            <div className="text-2xl font-bold text-gray-900">
+              {insights?.avg_compliance_rate ? `${Math.round(insights.avg_compliance_rate)}%` : 'N/A'}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Naming convention</p>
           </CardContent>
         </Card>
       </div>
@@ -88,55 +119,116 @@ export const InsightsTab = () => {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Compliance Rate Over Time</CardTitle>
+            <CardTitle>Discipline Performance</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-[300px]">
-              <LineChart data={complianceData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis domain={[80, 100]} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line 
-                  type="monotone" 
-                  dataKey="Office Building A" 
-                  stroke="#10b981" 
-                  strokeWidth={2} 
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="Residential Complex B" 
-                  stroke="#3b82f6" 
-                  strokeWidth={2} 
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="Infrastructure Project C" 
-                  stroke="#f59e0b" 
-                  strokeWidth={2} 
-                />
-              </LineChart>
-            </ChartContainer>
+            <div className="space-y-4">
+              {disciplines.map((discipline, index) => (
+                <div key={discipline.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="w-3 h-3 rounded-full" 
+                      style={{ backgroundColor: discipline.color || disciplineColors[index % disciplineColors.length] }}
+                    />
+                    <div>
+                      <div className="font-medium">{discipline.name}</div>
+                      <div className="text-sm text-gray-500">{discipline.total_reports} reports</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-4">
+                    {discipline.avg_match_rate !== null && (
+                      <div className="text-center">
+                        <div className="text-xs text-gray-500">Match</div>
+                        <SpeedometerChart 
+                          percentage={Math.round(discipline.avg_match_rate || 0)} 
+                          label=""
+                          size={40}
+                        />
+                      </div>
+                    )}
+                    {discipline.avg_compliance_rate !== null && (
+                      <div className="text-center">
+                        <div className="text-xs text-gray-500">Compliance</div>
+                        <SpeedometerChart 
+                          percentage={Math.round(discipline.avg_compliance_rate || 0)} 
+                          label=""
+                          size={40}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Reports Generated per Month</CardTitle>
+            <CardTitle>Reports by Discipline</CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-[300px]">
-              <BarChart data={reportsData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="reports" fill="#8b5cf6" />
-              </BarChart>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={disciplines}
+                    dataKey="total_reports"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {disciplines.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={entry.color || disciplineColors[index % disciplineColors.length]} 
+                      />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ResponsiveContainer>
             </ChartContainer>
           </CardContent>
         </Card>
       </div>
+
+      {insights?.recent_reports && insights.recent_reports.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Reports</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {insights.recent_reports.slice(0, 5).map((report) => (
+                <div key={report.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <div className="font-medium">{report.title}</div>
+                    <div className="text-sm text-gray-500">
+                      {report.report_type === 'deliverables' ? 'Deliverables' : 'Naming'} • {report.file_count} files
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-medium">
+                      {report.report_type === 'deliverables' && report.match_rate !== null
+                        ? `${Math.round(report.match_rate)}% match`
+                        : report.report_type === 'naming' && report.compliance_rate !== null
+                        ? `${Math.round(report.compliance_rate)}% compliance`
+                        : 'N/A'
+                      }
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(report.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

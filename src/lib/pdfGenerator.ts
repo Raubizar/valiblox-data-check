@@ -1,4 +1,6 @@
 import jsPDF from 'jspdf';
+import { ProjectService } from './projectService';
+import type { CreateReport } from '@/types/database';
 
 // Helper function to format date and time
 const formatDateTime = () => {
@@ -177,7 +179,13 @@ const drawSpeedometer = (pdf: jsPDF, x: number, y: number, percentage: number, l
 };
 
 // Enhanced PDF generator for Deliverables Tracker with improved branding
-export const generateDeliverablesTrackerPDF = async (comparisonResult: any, unifiedResults: any[]) => {
+export const generateDeliverablesTrackerPDF = async (
+  comparisonResult: any, 
+  unifiedResults: any[], 
+  projectId?: string, 
+  disciplineId?: string,
+  projectName?: string
+) => {
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -584,17 +592,59 @@ export const generateDeliverablesTrackerPDF = async (comparisonResult: any, unif
   } else {
     // Just add footer to single page
     addFooter(1, 1);
-  }
-
-  // Generate filename and save
+  }  // Generate filename and save
   const timestamp = new Date().toISOString().split('T')[0];
   const filename = `deliverables-tracker-report-${timestamp}.pdf`;
+  
+  // Save to Supabase if project info is provided
+  if (projectId) {
+    try {
+      const reportData: CreateReport = {
+        project_id: projectId,
+        discipline_id: disciplineId || null,
+        drawing_list_id: null,
+        naming_standard_id: null,
+        report_type: 'deliverables',
+        title: `Deliverables Tracker Report - ${projectName || 'Project'} - ${new Date().toLocaleDateString()}`,
+        results: {
+          matched: comparisonResult.matched,
+          unmatched: comparisonResult.unmatched,
+          partial: comparisonResult.partial || [],
+          summary: {
+            total_files: totalFiles,
+            matched_files: comparisonResult.matched.length,
+            unmatched_files: comparisonResult.unmatched.length,
+            match_rate: matchRate
+          }
+        },
+        summary: {
+          total_files: totalFiles,
+          matched_files: comparisonResult.matched.length,
+          unmatched_files: comparisonResult.unmatched.length
+        },
+        file_count: totalFiles,
+        match_rate: matchRate,
+        compliance_rate: null
+      };
+      
+      await ProjectService.createReport(reportData);
+      console.log('Report saved to Supabase successfully');
+    } catch (error) {
+      console.error('Failed to save report to Supabase:', error);
+    }
+  }
   
   pdf.save(filename);
 };
 
 // Specific function for Naming Validation report
-export const generateNamingValidationPDF = async (complianceData: any, validationResults: any[]) => {
+export const generateNamingValidationPDF = async (
+  complianceData: any, 
+  validationResults: any[], 
+  projectId?: string, 
+  disciplineId?: string,
+  projectName?: string
+) => {
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -1027,10 +1077,51 @@ export const generateNamingValidationPDF = async (complianceData: any, validatio
     // Just add footer to single page
     addFooter(1, 1);
   }
-  
-  // Generate filename and save
+    // Generate filename and save
   const timestamp = new Date().toISOString().split('T')[0];
   const filename = `naming-validation-report-${timestamp}.pdf`;
+  
+  // Calculate compliance rate from results
+  const totalFiles = validationResults.length;
+  const compliantFiles = validationResults.filter(result => result.compliant).length;
+  const complianceRate = totalFiles > 0 ? (compliantFiles / totalFiles) * 100 : 0;
+  
+  // Save to Supabase if project info is provided
+  if (projectId) {
+    try {
+      const reportData: CreateReport = {
+        project_id: projectId,
+        discipline_id: disciplineId || null,
+        drawing_list_id: null,
+        naming_standard_id: null,
+        report_type: 'naming',
+        title: `Naming Validation Report - ${projectName || 'Project'} - ${new Date().toLocaleDateString()}`,
+        results: {
+          validation_results: validationResults,
+          compliance_data: complianceData,
+          summary: {
+            total_files: totalFiles,
+            compliant_files: compliantFiles,
+            non_compliant_files: totalFiles - compliantFiles,
+            compliance_rate: complianceRate
+          }
+        },
+        summary: {
+          total_files: totalFiles,
+          compliant_files: compliantFiles,
+          non_compliant_files: totalFiles - compliantFiles
+        },
+        file_count: totalFiles,
+        match_rate: null,
+        compliance_rate: complianceRate
+      };
+      
+      await ProjectService.createReport(reportData);
+      console.log('Report saved to Supabase successfully');
+    } catch (error) {
+      console.error('Failed to save report to Supabase:', error);
+    }
+  }
   
   pdf.save(filename);
 };

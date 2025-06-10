@@ -27,6 +27,7 @@ interface ValidationResultsProps {
   onDownloadRequest?: () => void;
   onSaveToProject?: () => void;
   selectedProject?: Project | null;
+  selectedDiscipline?: string;
   isSaving?: boolean;
 }
 
@@ -36,6 +37,7 @@ export const ValidationResults = ({
   onDownloadRequest,
   onSaveToProject,
   selectedProject,
+  selectedDiscipline,
   isSaving = false
 }: ValidationResultsProps) => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -133,10 +135,15 @@ export const ValidationResults = ({
     // Trigger download
     link.click();
     document.body.removeChild(link);
-  };  
-  const handlePDFExport = async () => {
+  };    const handlePDFExport = async () => {
     try {
-      await generateNamingValidationPDF(complianceData, filteredAndSortedResults);
+      await generateNamingValidationPDF(
+        complianceData, 
+        filteredAndSortedResults,
+        selectedProject?.id,
+        selectedDiscipline || undefined,
+        selectedProject?.name
+      );
     } catch (error) {
       console.error('Error generating PDF:', error);
       // You could add a toast notification here
