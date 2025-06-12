@@ -61,6 +61,8 @@ export interface Report {
   match_rate?: number; // For deliverables reports
   compliance_rate?: number; // For naming validation reports
   created_at: string;
+  user_id: string;
+  renamed_at?: string;
 }
 
 // Dashboard view types
@@ -96,9 +98,9 @@ export interface DisciplinePerformance {
 export interface ReportFilters {
   project_id?: string;
   discipline_id?: string;
-  report_type?: 'deliverables' | 'naming';
-  date_from?: string;
-  date_to?: string;
+  report_type?: string;
+  start_date?: string;
+  end_date?: string;
 }
 
 export interface DashboardInsights {

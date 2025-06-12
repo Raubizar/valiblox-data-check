@@ -1,50 +1,28 @@
-
+import { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Download, Eye, FileText } from "lucide-react";
+import { Download, Eye, FileText, Pencil, Trash2 } from "lucide-react";
+import { ProjectService } from "@/lib/projectService";
+import { useAuth } from "@/hooks/useAuth";
 
 export const ReportsTab = () => {
-  const reports = [
-    {
-      id: 1,
-      name: "Weekly Validation Report #23",
-      project: "Office Building A - Phase 1",
-      dateCreated: "2024-05-28",
-      complianceRate: 95,
-      filesChecked: 45,
-      status: "completed",
-    },
-    {
-      id: 2,
-      name: "Monthly Compliance Summary",
-      project: "Residential Complex B",
-      dateCreated: "2024-05-27",
-      complianceRate: 88,
-      filesChecked: 132,
-      status: "completed",
-    },
-    {
-      id: 3,
-      name: "Final Project Validation",
-      project: "Infrastructure Project C",
-      dateCreated: "2024-05-20",
-      complianceRate: 92,
-      filesChecked: 89,
-      status: "completed",
-    },
-    {
-      id: 4,
-      name: "Quality Check Report #15",
-      project: "Shopping Mall Development",
-      dateCreated: "2024-05-26",
-      complianceRate: 97,
-      filesChecked: 67,
-      status: "processing",
-    },
-  ];
+  const { user, isAuthenticated } = useAuth();
+  const [reports, setReports] = useState([]);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      setLoading(true);
+      ProjectService.getReports(user.id)
+        .then((data) => setReports(data))
+        .finally(() => setLoading(false));
+    }
+  }, [isAuthenticated, user]);
 
   const getComplianceBadge = (rate: number) => {
     if (rate >= 95) return <Badge className="bg-green-100 text-green-800">{rate}% Excellent</Badge>;
@@ -52,25 +30,27 @@ export const ReportsTab = () => {
     return <Badge className="bg-red-100 text-red-800">{rate}% Needs Review</Badge>;
   };
 
-  const sampleReportContent = `
-    Project: Office Building A - Phase 1
-    Validation Date: 2024-05-28
-    
-    Summary:
-    - Total Files Checked: 45
-    - Compliant Files: 43
-    - Non-compliant Files: 2
-    - Overall Compliance Rate: 95%
-    
-    Issues Found:
-    1. File "DWG_001_Rev_A.dwg" - Missing revision suffix
-    2. File "Specs_final.pdf" - Incorrect naming convention
-    
-    Recommendations:
-    - Implement automated naming checks before file upload
-    - Update naming standard documentation
-    - Schedule team training on naming conventions
-  `;
+  const handleRename = async (id: string) => {
+    if (!user) return;
+    await ProjectService.updateReport(id, { title: renameValue }, user.id);
+    setRenamingId(null);
+    setRenameValue("");
+    // Refresh reports
+    const data = await ProjectService.getReports(user.id);
+    setReports(data);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!user) return;
+    await ProjectService.deleteReport(id, user.id);
+    // Refresh reports
+    const data = await ProjectService.getReports(user.id);
+    setReports(data);
+  };
+
+  if (!isAuthenticated) {
+    return <div className="p-8 text-center text-gray-600">Please sign in to view your reports.</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -87,56 +67,91 @@ export const ReportsTab = () => {
           <CardTitle>Recent Reports</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Report Name</TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead>Date Created</TableHead>
-                <TableHead>Files Checked</TableHead>
-                <TableHead>Compliance</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {reports.map((report) => (
-                <TableRow key={report.id}>
-                  <TableCell className="font-medium">{report.name}</TableCell>
-                  <TableCell className="text-gray-600">{report.project}</TableCell>
-                  <TableCell className="text-gray-600">{report.dateCreated}</TableCell>
-                  <TableCell>{report.filesChecked} files</TableCell>
-                  <TableCell>{getComplianceBadge(report.complianceRate)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                          <DialogHeader>
-                            <DialogTitle>{report.name}</DialogTitle>
-                          </DialogHeader>
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <pre className="text-sm whitespace-pre-wrap">{sampleReportContent}</pre>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                      <Button variant="ghost" size="sm">
-                        <Download className="w-4 h-4 mr-1" />
-                        PDF
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Download className="w-4 h-4 mr-1" />
-                        Excel
-                      </Button>
-                    </div>
-                  </TableCell>
+          {loading ? (
+            <div className="p-8 text-center text-gray-500">Loading...</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Report Name</TableHead>
+                  <TableHead>Project</TableHead>
+                  <TableHead>Date Created</TableHead>
+                  <TableHead>Last Renamed</TableHead>
+                  <TableHead>Files Checked</TableHead>
+                  <TableHead>Compliance</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {reports.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-gray-500">No reports found.</TableCell>
+                  </TableRow>
+                ) : (
+                  reports.map((report: any) => (
+                    <TableRow key={report.id}>
+                      <TableCell className="font-medium">
+                        {renamingId === report.id ? (
+                          <div className="flex items-center space-x-2">
+                            <input
+                              className="border rounded px-2 py-1 text-sm"
+                              value={renameValue}
+                              onChange={e => setRenameValue(e.target.value)}
+                              autoFocus
+                            />
+                            <Button size="sm" onClick={() => handleRename(report.id)}>Save</Button>
+                            <Button size="sm" variant="ghost" onClick={() => setRenamingId(null)}>Cancel</Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            {report.title}
+                            <Button variant="ghost" size="sm" onClick={() => { setRenamingId(report.id); setRenameValue(report.title); }}>
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-gray-600">{report.projects?.name || "-"}</TableCell>
+                      <TableCell className="text-gray-600">{new Date(report.created_at).toLocaleString()}</TableCell>
+                      <TableCell className="text-gray-600">{report.renamed_at ? new Date(report.renamed_at).toLocaleString() : "-"}</TableCell>
+                      <TableCell>{report.file_count ?? "-"} files</TableCell>
+                      <TableCell>{getComplianceBadge(report.compliance_rate ?? 0)}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                              <DialogHeader>
+                                <DialogTitle>{report.title}</DialogTitle>
+                              </DialogHeader>
+                              <div className="bg-gray-50 p-4 rounded-lg">
+                                <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(report.results, null, 2)}</pre>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                          <Button variant="ghost" size="sm">
+                            <Download className="w-4 h-4 mr-1" />
+                            PDF
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Download className="w-4 h-4 mr-1" />
+                            Excel
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(report.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -5,6 +5,7 @@
 DROP TABLE IF EXISTS reports CASCADE;
 DROP TABLE IF EXISTS drawing_lists CASCADE;
 DROP TABLE IF EXISTS naming_standards CASCADE;
+DROP TABLE IF EXISTS disciplines CASCADE;
 DROP TABLE IF EXISTS projects CASCADE;
 
 -- Projects table
@@ -76,15 +77,57 @@ CREATE TABLE reports (
   discipline_id UUID REFERENCES disciplines(id) ON DELETE SET NULL,
   drawing_list_id UUID REFERENCES drawing_lists(id) ON DELETE SET NULL,
   naming_standard_id UUID REFERENCES naming_standards(id) ON DELETE SET NULL,
+  user_id UUID REFERENCES auth.users(id) NOT NULL,
   report_type VARCHAR(50) NOT NULL CHECK (report_type IN ('deliverables', 'naming')),
   title VARCHAR(255) NOT NULL,
-  results JSONB NOT NULL, -- Store the comparison/validation results
-  summary JSONB, -- Store summary statistics (match rate, compliance rate, etc.)
+  results JSONB NOT NULL,
+  summary JSONB,
   file_count INTEGER DEFAULT 0,
-  match_rate DECIMAL(5,2), -- For deliverables reports
-  compliance_rate DECIMAL(5,2), -- For naming validation reports
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+  match_rate DECIMAL(5,2),
+  compliance_rate DECIMAL(5,2),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  renamed_at TIMESTAMP WITH TIME ZONE
 );
+
+-- Add user_id and renamed_at columns if table already exists
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reports' AND column_name='user_id') THEN
+    ALTER TABLE reports ADD COLUMN user_id UUID REFERENCES auth.users(id) NOT NULL DEFAULT auth.uid();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='reports' AND column_name='renamed_at') THEN
+    ALTER TABLE reports ADD COLUMN renamed_at TIMESTAMP WITH TIME ZONE;
+  END IF;
+END $$;
+
+-- Enable RLS
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Only allow users to access their own reports
+CREATE POLICY "Users can view their own reports" ON reports
+  FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "Users can insert their own reports" ON reports
+  FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "Users can delete their own reports" ON reports
+  FOR DELETE USING (user_id = auth.uid());
+CREATE POLICY "Users can update their own reports" ON reports
+  FOR UPDATE USING (user_id = auth.uid());
+
+-- Trigger to update renamed_at when title changes
+CREATE OR REPLACE FUNCTION update_renamed_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.title IS DISTINCT FROM OLD.title THEN
+    NEW.renamed_at = NOW();
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS set_renamed_at ON reports;
+CREATE TRIGGER set_renamed_at
+  BEFORE UPDATE OF title ON reports
+  FOR EACH ROW
+  EXECUTE FUNCTION update_renamed_at();
 
 -- Create indexes for better performance
 CREATE INDEX idx_projects_name ON projects(name);
@@ -104,7 +147,6 @@ ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE disciplines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE naming_standards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE drawing_lists ENABLE ROW LEVEL SECURITY;
-ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for public access (for now, until auth is implemented)
 CREATE POLICY "Allow all operations on projects" ON projects FOR ALL USING (true);
@@ -168,3 +210,5 @@ SELECT
 FROM disciplines d
 LEFT JOIN reports r ON d.id = r.discipline_id
 GROUP BY d.id, d.name, d.code, d.color;
+
+SELECT column_name FROM information_schema.columns WHERE table_name = 'reports';

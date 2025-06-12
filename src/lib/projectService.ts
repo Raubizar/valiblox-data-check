@@ -18,13 +18,35 @@ import type {
 export class ProjectService {
   // Projects
   static async getProjects(): Promise<Project[]> {
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data || [];
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw new Error(`Failed to fetch projects: ${error.message}`);
+      return data || [];
+    } catch (error) {
+      console.error('Error in getProjects:', error);
+      throw error;
+    }
+  }
+
+  static async getProjectById(id: string): Promise<Project> {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw new Error(`Failed to fetch project: ${error.message}`);
+      if (!data) throw new Error(`Project not found: ${id}`);
+      return data;
+    } catch (error) {
+      console.error('Error in getProjectById:', error);
+      throw error;
+    }
   }
 
   static async getProjectSummaries(): Promise<ProjectSummary[]> {
@@ -38,35 +60,50 @@ export class ProjectService {
   }
 
   static async createProject(project: CreateProject): Promise<Project> {
-    const { data, error } = await supabase
-      .from('projects')
-      .insert(project)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .insert(project)
+        .select()
+        .single();
+      
+      if (error) throw new Error(`Failed to create project: ${error.message}`);
+      return data;
+    } catch (error) {
+      console.error('Error in createProject:', error);
+      throw error;
+    }
   }
 
-  static async updateProject(id: string, updates: Partial<CreateProject>): Promise<Project> {
-    const { data, error } = await supabase
-      .from('projects')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+  static async updateProject(id: string, updates: Partial<Project>): Promise<Project> {
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) throw new Error(`Failed to update project: ${error.message}`);
+      return data;
+    } catch (error) {
+      console.error('Error in updateProject:', error);
+      throw error;
+    }
   }
 
   static async deleteProject(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('projects')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw new Error(`Failed to delete project: ${error.message}`);
+    } catch (error) {
+      console.error('Error in deleteProject:', error);
+      throw error;
+    }
   }
 
   // Disciplines
@@ -162,138 +199,168 @@ export class ProjectService {
     return data;
   }
   // Reports
-  static async saveReport(report: CreateReport): Promise<Report> {
-    const { data, error } = await supabase
-      .from('reports')
-      .insert(report)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+  static async getReports(userId: string, filters?: ReportFilters): Promise<Report[]> {
+    try {
+      let query = supabase
+        .from('reports')
+        .select(`
+          *,
+          projects(name),
+          disciplines(name, code, color)
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (filters) {
+        if (filters.project_id) query = query.eq('project_id', filters.project_id);
+        if (filters.discipline_id) query = query.eq('discipline_id', filters.discipline_id);
+        if (filters.report_type) query = query.eq('report_type', filters.report_type);
+        if (filters.start_date) query = query.gte('created_at', filters.start_date);
+        if (filters.end_date) query = query.lte('created_at', filters.end_date);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) throw new Error(`Failed to fetch reports: ${error.message}`);
+      return data || [];
+    } catch (error) {
+      console.error('Error in getReports:', error);
+      throw error;
+    }
   }
 
-  static async getReportsByProject(projectId: string): Promise<Report[]> {
-    const { data, error } = await supabase
-      .from('reports')
-      .select(`
-        *,
-        disciplines(name, code, color),
-        drawing_lists(name, file_name),
-        naming_standards(name, file_name)
-      `)
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data || [];
+  static async getReportById(id: string): Promise<Report> {
+    try {
+      const { data, error } = await supabase
+        .from('reports')
+        .select(`
+          *,
+          projects(name),
+          disciplines(name, code, color)
+        `)
+        .eq('id', id)
+        .single();
+      
+      if (error) throw new Error(`Failed to fetch report: ${error.message}`);
+      if (!data) throw new Error(`Report not found: ${id}`);
+      return data;
+    } catch (error) {
+      console.error('Error in getReportById:', error);
+      throw error;
+    }
   }
 
-  static async getReportsWithFilters(filters: ReportFilters): Promise<Report[]> {
-    let query = supabase
-      .from('reports')
-      .select(`
-        *,
-        projects(name),
-        disciplines(name, code, color),
-        drawing_lists(name, file_name),
-        naming_standards(name, file_name)
-      `);
-
-    if (filters.project_id) {
-      query = query.eq('project_id', filters.project_id);
+  static async saveReport(report: CreateReport, userId: string): Promise<Report> {
+    try {
+      const { data, error } = await supabase
+        .from('reports')
+        .insert({ ...report, user_id: userId })
+        .select()
+        .single();
+      
+      if (error) throw new Error(`Failed to save report: ${error.message}`);
+      return data;
+    } catch (error) {
+      console.error('Error in saveReport:', error);
+      throw error;
     }
-    
-    if (filters.discipline_id) {
-      query = query.eq('discipline_id', filters.discipline_id);
-    }
-    
-    if (filters.report_type) {
-      query = query.eq('report_type', filters.report_type);
-    }
-    
-    if (filters.date_from) {
-      query = query.gte('created_at', filters.date_from);
-    }
-    
-    if (filters.date_to) {
-      query = query.lte('created_at', filters.date_to);
-    }
-
-    query = query.order('created_at', { ascending: false });
-
-    const { data, error } = await query;
-    
-    if (error) throw error;
-    return data || [];
   }
 
-  static async deleteReport(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('reports')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+  static async updateReport(id: string, updates: Partial<Report>, userId: string): Promise<Report> {
+    try {
+      const { data, error } = await supabase
+        .from('reports')
+        .update(updates)
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select()
+        .single();
+      
+      if (error) throw new Error(`Failed to update report: ${error.message}`);
+      return data;
+    } catch (error) {
+      console.error('Error in updateReport:', error);
+      throw error;
+    }
+  }
+
+  static async deleteReport(id: string, userId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', userId);
+      
+      if (error) throw new Error(`Failed to delete report: ${error.message}`);
+    } catch (error) {
+      console.error('Error in deleteReport:', error);
+      throw error;
+    }
   }
 
   // Dashboard insights
   static async getDashboardInsights(): Promise<DashboardInsights> {
-    // Get basic counts
-    const [projectsResult, reportsResult] = await Promise.all([
-      supabase.from('projects').select('id', { count: 'exact', head: true }),
-      supabase.from('reports').select('id', { count: 'exact', head: true })
-    ]);
+    try {
+      // Get basic counts
+      const [projectsResult, reportsResult] = await Promise.all([
+        supabase.from('projects').select('id', { count: 'exact', head: true }),
+        supabase.from('reports').select('id', { count: 'exact', head: true })
+      ]);
 
-    if (projectsResult.error) throw projectsResult.error;
-    if (reportsResult.error) throw reportsResult.error;
+      if (projectsResult.error) throw new Error(`Failed to count projects: ${projectsResult.error.message}`);
+      if (reportsResult.error) throw new Error(`Failed to count reports: ${reportsResult.error.message}`);
 
-    // Get average rates
-    const { data: avgRates, error: avgError } = await supabase
-      .from('reports')
-      .select('match_rate, compliance_rate');
+      // Get average rates
+      const { data: avgRates, error: avgError } = await supabase
+        .from('reports')
+        .select('match_rate, compliance_rate');
 
-    if (avgError) throw avgError;
+      if (avgError) throw new Error(`Failed to get average rates: ${avgError.message}`);
 
-    const matchRates = avgRates?.filter(r => r.match_rate !== null).map(r => r.match_rate) || [];
-    const complianceRates = avgRates?.filter(r => r.compliance_rate !== null).map(r => r.compliance_rate) || [];
+      const matchRates = avgRates?.filter(r => r.match_rate !== null).map(r => r.match_rate) || [];
+      const complianceRates = avgRates?.filter(r => r.compliance_rate !== null).map(r => r.compliance_rate) || [];
 
-    const avgMatchRate = matchRates.length > 0 
-      ? matchRates.reduce((sum, rate) => sum + rate, 0) / matchRates.length 
-      : 0;
-    
-    const avgComplianceRate = complianceRates.length > 0 
-      ? complianceRates.reduce((sum, rate) => sum + rate, 0) / complianceRates.length 
-      : 0;
+      const avgMatchRate = matchRates.length > 0 
+        ? matchRates.reduce((sum, rate) => sum + rate, 0) / matchRates.length 
+        : 0;
+      
+      const avgComplianceRate = complianceRates.length > 0 
+        ? complianceRates.reduce((sum, rate) => sum + rate, 0) / complianceRates.length 
+        : 0;
 
-    // Get recent reports
-    const { data: recentReports, error: recentError } = await supabase
-      .from('reports')
-      .select(`
-        *,
-        projects(name),
-        disciplines(name, code, color)
-      `)
-      .order('created_at', { ascending: false })
-      .limit(10);
+      // Get recent reports
+      const { data: recentReports, error: recentError } = await supabase
+        .from('reports')
+        .select(`
+          *,
+          projects(name),
+          disciplines(name, code, color)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(10);
 
-    if (recentError) throw recentError;
+      if (recentError) throw new Error(`Failed to get recent reports: ${recentError.message}`);
 
-    // Get project and discipline performance
-    const [projectPerformance, disciplinePerformance] = await Promise.all([
-      this.getProjectSummaries(),
-      this.getDisciplinePerformance()
-    ]);
+      // Get project and discipline performance
+      const [projectPerformance, disciplinePerformance] = await Promise.all([
+        this.getProjectSummaries(),
+        this.getDisciplinePerformance()
+      ]);
 
-    return {
-      total_projects: projectsResult.count || 0,
-      total_reports: reportsResult.count || 0,
-      avg_match_rate: Math.round(avgMatchRate * 100) / 100,
-      avg_compliance_rate: Math.round(avgComplianceRate * 100) / 100,
-      recent_reports: recentReports || [],
-      project_performance: projectPerformance,
-      discipline_performance: disciplinePerformance
-    };
+      return {
+        total_projects: projectsResult.count || 0,
+        total_reports: reportsResult.count || 0,
+        avg_match_rate: Math.round(avgMatchRate * 100) / 100,
+        avg_compliance_rate: Math.round(avgComplianceRate * 100) / 100,
+        recent_reports: recentReports || [],
+        project_performance: projectPerformance,
+        discipline_performance: disciplinePerformance
+      };
+    } catch (error) {
+      console.error('Error in getDashboardInsights:', error);
+      throw error;
+    }
   }
 
   // Helper to convert file data back to File object
